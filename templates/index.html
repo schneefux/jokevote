@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<head>
+    <title>Lehrerspruch-Wahlplattform</title>
+</head>
+<body>
+    <h1>Lehrersprüche</h1>
+    <ul>
+        {% for joke in jokes %}
+            <li>{{ joke.text }}</li>
+        {% endfor %}
+    </ul>
+    <form action="submit" method="post">
+        Neuen Spruch hinzufügen
+        <input type="text" name="text">
+        <input type="submit" value="hinzufügen">
+    </form>
+</body>
+</html>
