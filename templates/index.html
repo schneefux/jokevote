@@ -3,18 +3,39 @@
 <meta charset="utf-8">
 <head>
     <title>Lehrerspruch-Wahlplattform</title>
+    <link rel="stylesheet" type="text/css" href="/static/normalize.css">
+    <link rel="stylesheet" type="text/css" href="/static/skeleton.css">
 </head>
 <body>
     <h1>Lehrersprüche</h1>
-    <ul>
         {% for joke in jokes %}
-            <li>{{ joke.text }}</li>
+        <div class="row">
+            <div class="one columns">
+                <form action="vote" method="post">
+                    <input type="hidden" name="id" value="{{ joke.id }}">
+                    <button type="submit" name="vote" value="upvote">⇧ ({{ joke.upvotes }})</button>
+                    <button type="submit" name="vote" value="downvote">⇩ ({{ joke.downvotes }})</button>
+                </form>
+            </div>
+            <div class="eleven columns">
+                <p>
+                    {{ joke.text }}
+                </p>
+            </div>
+        </div>
         {% endfor %}
-    </ul>
     <form action="submit" method="post">
-        Neuen Spruch hinzufügen
-        <input type="text" name="text">
-        <input type="submit" value="hinzufügen">
+        <div class="container">
+            <div class="four columns">
+                <p>Neuen Spruch hinzufügen</p>
+            </div>
+            <div class="four columns">
+                <textarea name="text"></textarea>
+            </div>
+            <div class="four columns">
+                <input type="submit" value="hinzufügen">
+            </div>
+        </div>
     </form>
 </body>
 </html>
