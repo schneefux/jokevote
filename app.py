@@ -50,13 +50,13 @@ class dbProxy(object):
 
     def voteJoke(self, objectId, down):
         if down:
-            self.c.execute("UPDATE jokes SET downvotes=downvotes+1 WHERE id=?", (objectId))
+            self.c.execute("UPDATE jokes SET downvotes=downvotes+1 WHERE id=?", (objectId,))
         else:
-            self.c.execute("UPDATE jokes SET upvotes=upvotes+1 WHERE id=?", (objectId))
+            self.c.execute("UPDATE jokes SET upvotes=upvotes+1 WHERE id=?", (objectId,))
         self.conn.commit()
 
     def reportJoke(self, objectId):
-        self.c.execute("UPDATE jokes SET reports=reports+1 WHERE id=?", (objectId))
+        self.c.execute("UPDATE jokes SET reports=reports+1 WHERE id=?", (objectId,))
         self.conn.commit()
 
 

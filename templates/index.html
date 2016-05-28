@@ -16,12 +16,12 @@
         <div class="row section valign-wrapper">
             <div class="col s3 m2">
                 <div class="row">
-                    <form action="vote" method="post">
+                    <form action="/vote" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="upvote"><i class="material-icons">thumb_up</i> {{ joke.upvotes }}</button>
                         <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> {{ joke.downvotes }}</button>
                     </form>
-                    <form action="report" method="post">
+                    <form action="/report" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <button class="btn-flat col s12" type="submit">
                             {% if joke.reports>0 %}
@@ -53,7 +53,7 @@
         </div>
         <div class="divider hide-on-small-only"></div>
         <div class="section hide-on-small-only">
-            <form action="submit" method="post">
+            <form action="/submit" method="post">
                 <div class="row valign-wrapper">
                     <div class="col s10 input-field">
                         <label for="text">Neuen Spruch hinzufügen</label>
