@@ -20,7 +20,7 @@
                 <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> {{ joke.downvotes }}</button>
             </form>
             <div class="col s8 {% if joke.reports>0 %}grey-text{% endif %}">
-                <p>{{ joke.text }}</p>
+                <p>{{ joke.text|safe }}</p>
             </div>
             <form class="col s2" action="report" method="post">
                 <input type="hidden" name="id" value="{{ joke.id }}">

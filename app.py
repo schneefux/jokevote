@@ -75,14 +75,15 @@ def close_db(exception):
 @app.route('/')
 def root():
     jokes = db().getJokes()
-    for joke in jokes:
-        joke['text'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO cache TODO safe_mode deprecated
+    #for joke in jokes:
     return render_template('index.html', jokes=jokes)
 
 @app.route('/submit', methods=['POST'])
 def submit():
     text = request.form['text']
-    db().addJoke(text)  # TODO auth
+    #joke['text'] =
+    text = Markup(markdown.markdown(text, extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
+    db().addJoke(text)
     return redirect('/')
 
 @app.route('/vote', methods=['POST'])
