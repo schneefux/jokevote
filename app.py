@@ -40,9 +40,9 @@ class dbProxy(object):
         return int(l/perpage)+1
 
     def getJokes(self, perpage, page):
-        jokes = self.c.execute("SELECT * FROM jokes LIMIT ? OFFSET ?", (perpage, perpage*page)).fetchall()
+        jokes = self.c.execute("SELECT * FROM jokes").fetchall()
         jokes = sorted(jokes, key=self.sort, reverse=True)
-        return jokes
+        return jokes[page*perpage:(page+1)*perpage]
 
     def addJoke(self, text):
         self.c.execute("INSERT INTO jokes(text, upvotes, downvotes, reports) VALUES (?, 0, 0, 0)", (text, ))
