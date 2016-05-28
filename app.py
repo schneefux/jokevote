@@ -35,8 +35,12 @@ class dbProxy(object):
         score = 1/interactions * (joke["upvotes"]+1)/interactions
         return score
 
-    def getJokes(self):
-        jokes = self.c.execute("SELECT * FROM jokes").fetchall()
+    def getPages(self, perpage):
+        l = self.c.execute("SELECT COUNT(*) FROM jokes").fetchone()['COUNT(*)']
+        return int(l/perpage)+1
+
+    def getJokes(self, perpage, page):
+        jokes = self.c.execute("SELECT * FROM jokes LIMIT ? OFFSET ?", (perpage, perpage*page)).fetchall()
         jokes = sorted(jokes, key=self.sort, reverse=True)
         return jokes
 
@@ -64,6 +68,7 @@ def db():
     return db
 
 app = Flask(__name__)
+PERPAGE = 10
 
 @app.teardown_appcontext
 def close_db(exception):
@@ -73,7 +78,12 @@ def close_db(exception):
 
 @app.route('/')
 def root():
-    return render_template('index.html', jokes=db().getJokes())
+    return page(0)
+
+@app.route('/page/<int:num>')
+def page(num):
+    numpages = db().getPages(PERPAGE)
+    return render_template('index.html', currentpage=num, pages=[[]]*numpages, jokes=db().getJokes(PERPAGE, num))
 
 @app.route('/submit', methods=['POST'])
 def submit():
