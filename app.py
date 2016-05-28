@@ -15,6 +15,7 @@ import sqlite3
 class dbProxy(object):
     def __init__(self, db):
         self.conn = sqlite3.connect(db)
+        self.conn.row_factory = self.dict_factory
         self.c = self.conn.cursor()
 
     def create(self):
@@ -23,9 +24,20 @@ class dbProxy(object):
     def close(self):
         self.conn.close()
 
+    def dict_factory(self, cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return d
+
+    def sort(self, joke):
+        interactions = joke["reports"]*5 + joke["upvotes"] + joke["downvotes"] + 1
+        score = 1/interactions * (joke["upvotes"]+1)/interactions
+        return score
+
     def getJokes(self):
-        jokes = self.c.execute("SELECT * FROM jokes ORDER BY reports ASC").fetchall()
-        jokes = [{"id": int(id), "text": text, "upvotes": int(upvotes), "downvotes": int(downvotes), "reports": int(reports)} for id, text, upvotes, downvotes, reports in jokes]  # TODO use factory
+        jokes = self.c.execute("SELECT * FROM jokes").fetchall()
+        jokes = sorted(jokes, key=self.sort, reverse=True)
         return jokes
 
     def addJoke(self, text):
@@ -89,7 +101,5 @@ def report():
 def get_static(path):
     return send_from_directory('static', path)
 
-# TODO sort by votes
-# TODO buttons floating weird
 if __name__ == '__main__':
     app.run(debug=True)
