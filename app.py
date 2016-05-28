@@ -89,20 +89,23 @@ def page(num):
 def submit():
     text = request.form['text']
     html = Markup(markdown.markdown(text, extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
+    page = request.form['redirpage']
     db().addJoke(html)
-    return redirect('/')
+    return redirect('/page/' + page)
 
 @app.route('/vote', methods=['POST'])
 def vote():
     objectId = request.form['id']
+    page = request.form['redirpage']
     db().voteJoke(objectId, request.form['vote'] == 'downvote')
-    return redirect('/')
+    return redirect('/page/' + page)
 
 @app.route('/report', methods=['POST'])
 def report():
     objectId = request.form['id']
+    page = request.form['redirpage']
     db().reportJoke(objectId)
-    return redirect('/')
+    return redirect('/page/' + page)
 
 @app.route('/static/<path:path>')
 def get_static(path):
