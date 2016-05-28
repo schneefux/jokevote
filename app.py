@@ -65,7 +65,6 @@ def db():
 
 app = Flask(__name__)
 
-
 @app.teardown_appcontext
 def close_db(exception):
     db = getattr(g, "_database", None)
@@ -74,16 +73,13 @@ def close_db(exception):
 
 @app.route('/')
 def root():
-    jokes = db().getJokes()
-    #for joke in jokes:
-    return render_template('index.html', jokes=jokes)
+    return render_template('index.html', jokes=db().getJokes())
 
 @app.route('/submit', methods=['POST'])
 def submit():
     text = request.form['text']
-    #joke['text'] =
-    text = Markup(markdown.markdown(text, extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
-    db().addJoke(text)
+    html = Markup(markdown.markdown(text, extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
+    db().addJoke(html)
     return redirect('/')
 
 @app.route('/vote', methods=['POST'])
@@ -102,5 +98,6 @@ def report():
 def get_static(path):
     return send_from_directory('static', path)
 
+app.debug = True
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
