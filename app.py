@@ -18,18 +18,18 @@ class dbProxy(object):
         self.c = self.conn.cursor()
 
     def create(self):
-        self.c.execute("CREATE TABLE IF NOT EXISTS jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, upvotes INTEGER, downvotes INTEGER)")
+        self.c.execute("CREATE TABLE IF NOT EXISTS jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, upvotes INTEGER, downvotes INTEGER, reports INTEGER)")
 
     def close(self):
         self.conn.close()
 
     def getJokes(self):
-        jokes = self.c.execute("SELECT * FROM jokes").fetchall()
-        jokes = [{"id": id, "text": text, "upvotes": upvotes, "downvotes": downvotes} for id, text, upvotes, downvotes in jokes]
+        jokes = self.c.execute("SELECT * FROM jokes ORDER BY reports ASC").fetchall()
+        jokes = [{"id": int(id), "text": text, "upvotes": int(upvotes), "downvotes": int(downvotes), "reports": int(reports)} for id, text, upvotes, downvotes, reports in jokes]  # TODO use factory
         return jokes
 
     def addJoke(self, text):
-        self.c.execute("INSERT INTO jokes(text, upvotes, downvotes) VALUES (?, 0, 0)", (text, ))
+        self.c.execute("INSERT INTO jokes(text, upvotes, downvotes, reports) VALUES (?, 0, 0, 0)", (text, ))
         self.conn.commit()
 
     def voteJoke(self, objectId, down):
@@ -37,6 +37,10 @@ class dbProxy(object):
             self.c.execute("UPDATE jokes SET downvotes=downvotes+1 WHERE id=?", (objectId))
         else:
             self.c.execute("UPDATE jokes SET upvotes=upvotes+1 WHERE id=?", (objectId))
+        self.conn.commit()
+
+    def reportJoke(self, objectId):
+        self.c.execute("UPDATE jokes SET reports=reports+1 WHERE id=?", (objectId))
         self.conn.commit()
 
 
@@ -63,7 +67,6 @@ def root():
         joke['text'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO cache TODO safe_mode deprecated
     return render_template('index.html', jokes=jokes)
 
-
 @app.route('/submit', methods=['POST'])
 def submit():
     text = request.form['text']
@@ -74,6 +77,12 @@ def submit():
 def vote():
     objectId = request.form['id']
     db().voteJoke(objectId, request.form['vote'] == 'downvote')
+    return redirect('/')
+
+@app.route('/report', methods=['POST'])
+def report():
+    objectId = request.form['id']
+    db().reportJoke(objectId)
     return redirect('/')
 
 @app.route('/static/<path:path>')

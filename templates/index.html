@@ -16,12 +16,19 @@
         <div class="section row valign-wrapper">
             <form class="col s2 row" action="vote" method="post">
                 <input type="hidden" name="id" value="{{ joke.id }}">
-                <button class="btn col s12" type="submit" name="vote" value="upvote"><i class="material-icons">thumb_up</i> {{ joke.upvotes }}</button>
-                <button class="btn col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> {{ joke.downvotes }}</button>
+                <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="upvote"><i class="material-icons">thumb_up</i> {{ joke.upvotes }}</button>
+                <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> {{ joke.downvotes }}</button>
             </form>
-            <div class="col s10 row">
-                <p class="valign s12">{{ joke.text }}</p>
+            <div class="col s8 {% if joke.reports>0 %}grey-text{% endif %}">
+                <p>{{ joke.text }}</p>
             </div>
+            <form class="col s2" action="report" method="post">
+                <input type="hidden" name="id" value="{{ joke.id }}">
+                <button class="btn-flat row" type="submit">
+                    <i class="material-icons col s6">report_problem</i>
+                    <span class="red-text col s6">{% if joke.reports>0 %}{{ joke.reports }}{% endif %}</span>
+                </button>
+            </form>
         </div>
         <div class="divider"></div>
         {% endfor %}
