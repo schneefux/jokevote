@@ -5,30 +5,40 @@
     <link rel="stylesheet" type="text/css" href="/static/materialize.min.css">
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0" />
 </head>
 <body>
     <script type="text/javascript" src="/static/materialize.min.js"></script>
     <div class="container">
-        <h1>Lehrersprüche</h1>
+        <h3>Lehrersprüche</h3>
         <div class="divider"></div>
         {% for joke in jokes %}
         <div class="row section valign-wrapper">
-            <form class="col s2 row" action="vote" method="post">
-                <input type="hidden" name="id" value="{{ joke.id }}">
-                <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="upvote"><i class="material-icons">thumb_up</i> {{ joke.upvotes }}</button>
-                <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> {{ joke.downvotes }}</button>
-            </form>
-            <div class="valign col s8 {% if joke.reports>0 %}grey-text{% endif %}">
+            <div class="col s3 m2">
+                <div class="row">
+                    <form action="vote" method="post">
+                        <input type="hidden" name="id" value="{{ joke.id }}">
+                        <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="upvote"><i class="material-icons">thumb_up</i> {{ joke.upvotes }}</button>
+                        <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> {{ joke.downvotes }}</button>
+                    </form>
+                    <form action="report" method="post">
+                        <input type="hidden" name="id" value="{{ joke.id }}">
+                        <button class="btn-flat col s12" type="submit">
+                            {% if joke.reports>0 %}
+                            <div class="row">
+                                <i class="material-icons col s6">report_problem</i>
+                                <span class="red-text col s6">{{ joke.reports }}</span>
+                            </div>
+                            {% else %}
+                            <i class="material-icons">report_problem</i>
+                            {% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="valign col s9 m10 {% if joke.reports>0 %}grey-text{% endif %}">
                 {{ joke.text|safe }}
             </div>
-            <form class="col s2" action="report" method="post">
-                <input type="hidden" name="id" value="{{ joke.id }}">
-                <button class="btn-flat row" type="submit">
-                    <i class="material-icons col s6">report_problem</i>
-                    <span class="red-text col s6">{% if joke.reports>0 %}{{ joke.reports }}{% endif %}</span>
-                </button>
-            </form>
         </div>
         <div class="divider"></div>
         {% endfor %}
@@ -41,15 +51,15 @@
                 <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}"><i class="material-icons">chevron_right</i></a></li>
             </ul>
         </div>
-        <div class="divider"></div>
-        <div class="section">
+        <div class="divider hide-on-small-only"></div>
+        <div class="section hide-on-small-only">
             <form action="submit" method="post">
                 <div class="row valign-wrapper">
-                    <div class="col s8 input-field">
+                    <div class="col s10 input-field">
                         <label for="text">Neuen Spruch hinzufügen</label>
                         <textarea class="materialize-textarea" name="text"></textarea>
                     </div>
-                    <div class="col s4 valign">
+                    <div class="col s3 valign">
                         <input type="submit" class="btn" value="hinzufügen">
                     </div>
                 </div>
