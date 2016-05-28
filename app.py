@@ -31,8 +31,9 @@ class dbProxy(object):
         return d
 
     def sort(self, joke):
-        interactions = joke["reports"]*5 + joke["upvotes"] + joke["downvotes"] + 1
-        score = 1/interactions * (joke["upvotes"]+1)/interactions
+        #interactions = joke["reports"]*5 + joke["upvotes"] + joke["downvotes"] + 1
+        #score = 1/interactions * (joke["upvotes"]+1)/interactions
+        score = joke["upvotes"] - joke["downvotes"] - joke["reports"]*5
         return score
 
     def getPages(self, perpage):
