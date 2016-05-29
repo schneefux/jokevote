@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0" />
 </head>
 <body>
+    <script type="text/javascript" src="/static/jquery.min.js"></script>
     <script type="text/javascript" src="/static/materialize.min.js"></script>
     <div class="container">
         <h3>Lehrersprüche</h3>
@@ -15,12 +16,12 @@
         {% for joke in jokes %}
         <div class="row section valign-wrapper">
             <div class="col s3 m2">
-                <div class="row">
-                    <form action="/vote" method="post">
+                <div class="row joke">
+                    <form action="/vote" method="post" class="voteform">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.locked %} disabled{% endif %} col s12" type="submit" name="vote" value="upvote"><i class="material-icons">thumb_up</i> {{ joke.upvotes }}</button>
-                        <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.locked %} disabled{% endif %} col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> {{ joke.downvotes }}</button>
+                        <button class="upvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.locked %} disabled{% endif %} col s12" type="submit" name="vote" value="upvote"><i class="material-icons">thumb_up</i> <span class="btnval">{{ joke.upvotes }}</span></button>
+                        <button class="downvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.locked %} disabled{% endif %} col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> <span class="btnval">{{ joke.downvotes }}</span></button>
                     </form>
                     <form action="/report" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
@@ -69,5 +70,26 @@
             </form>
         </div>
     </div>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $('.upvotebtn').click(function(e) { submitAjaxer.call(this, e, 'vote', 'upvote'); });
+            $('.downvotebtn').click(function(e) { submitAjaxer.call(this, e, 'vote', 'downvote'); });
+
+            function submitAjaxer(e, name, value) {
+                e.preventDefault();
+                var form = $(this).closest('form');
+                var joke = $(this).closest('.joke');
+                $.ajax({
+                    url: form.attr('action'),
+                    type: "POST",
+                    data: form.serialize() + '&' + name + '=' + value,
+                    success: function(data) {
+                        $('button', joke).addClass('disabled');
+                    }
+                });
+                $('.btnval', $(this)).text(parseInt($('.btnval', $(this)).text())+1);
+            }
+        });
+    </script>
 </body>
 </html>
