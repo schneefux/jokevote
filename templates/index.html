@@ -19,13 +19,13 @@
                     <form action="/vote" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="upvote"><i class="material-icons">thumb_up</i> {{ joke.upvotes }}</button>
-                        <button class="btn{% if joke.reports>0 %}-flat{% endif %} col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> {{ joke.downvotes }}</button>
+                        <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.locked %} disabled{% endif %} col s12" type="submit" name="vote" value="upvote"><i class="material-icons">thumb_up</i> {{ joke.upvotes }}</button>
+                        <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.locked %} disabled{% endif %} col s12" type="submit" name="vote" value="downvote"><i class="material-icons">thumb_down</i> {{ joke.downvotes }}</button>
                     </form>
                     <form action="/report" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="btn-flat col s12" type="submit">
+                        <button class="btn-flat{% if joke.locked %} disabled{% endif %} col s12" type="submit">
                             {% if joke.reports>0 %}
                             <div class="row">
                                 <i class="material-icons col s6">report_problem</i>

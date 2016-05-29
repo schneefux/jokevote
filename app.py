@@ -20,6 +20,7 @@ class dbProxy(object):
 
     def create(self):
         self.c.execute("CREATE TABLE IF NOT EXISTS jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, upvotes INTEGER, downvotes INTEGER, reports INTEGER)")
+        self.c.execute("CREATE TABLE IF NOT EXISTS votes(id INTEGER PRIMARY KEY NOT NULL, ip TEXT, jokeid INTEGER, type INTEGER)")
 
     def close(self):
         self.conn.close()
@@ -49,16 +50,23 @@ class dbProxy(object):
         self.c.execute("INSERT INTO jokes(text, upvotes, downvotes, reports) VALUES (?, 0, 0, 0)", (text, ))
         self.conn.commit()
 
-    def voteJoke(self, objectId, down):
+    def voteJoke(self, objectId, down, ip):
         if down:
             self.c.execute("UPDATE jokes SET downvotes=downvotes+1 WHERE id=?", (objectId,))
         else:
             self.c.execute("UPDATE jokes SET upvotes=upvotes+1 WHERE id=?", (objectId,))
+        self.c.execute("INSERT INTO votes(ip, jokeid, type) VALUES (?, ?, ?)", (ip, objectId, -1 if down else +1))
         self.conn.commit()
 
-    def reportJoke(self, objectId):
+    def reportJoke(self, objectId, ip):
         self.c.execute("UPDATE jokes SET reports=reports+1 WHERE id=?", (objectId,))
+        self.c.execute("INSERT INTO votes(ip, jokeid, type) VALUES (?, ?, ?)", (ip, objectId, 0))
         self.conn.commit()
+
+    def getUserVotes(self, ip):
+        votes = self.c.execute("SELECT jokeid FROM votes WHERE ip=?", (ip, )).fetchall()
+        votes = [v['jokeid'] for v in votes]
+        return votes
 
 
 def db():
@@ -84,7 +92,14 @@ def root():
 @app.route('/page/<int:num>')
 def page(num):
     numpages = db().getPages(PERPAGE)
-    return render_template('index.html', currentpage=num, pages=[[]]*numpages, jokes=db().getJokes(PERPAGE, num))
+    jokes = db().getJokes(PERPAGE, num)
+    ip = request.remote_addr
+    votes = db().getUserVotes(ip)
+    for joke in jokes:
+        if joke['id'] in votes:
+            joke['locked'] = True
+
+    return render_template('index.html', currentpage=num, pages=[[]]*numpages, jokes=jokes)
 
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -96,16 +111,20 @@ def submit():
 
 @app.route('/vote', methods=['POST'])
 def vote():
-    objectId = request.form['id']
+    objectId = int(request.form['id'])
     page = request.form['redirpage']
-    db().voteJoke(objectId, request.form['vote'] == 'downvote')
+    ip = request.remote_addr
+    if objectId not in db().getUserVotes(ip):
+        db().voteJoke(objectId, request.form['vote'] == 'downvote', ip)
     return redirect('/page/' + page)
 
 @app.route('/report', methods=['POST'])
 def report():
-    objectId = request.form['id']
+    objectId = int(request.form['id'])
     page = request.form['redirpage']
-    db().reportJoke(objectId)
+    ip = request.remote_addr
+    if objectId not in db().getUserVotes(ip):
+        db().reportJoke(objectId, ip)
     return redirect('/page/' + page)
 
 @app.route('/static/<path:path>')
@@ -114,4 +133,4 @@ def get_static(path):
 
 app.debug = True
 if __name__ == '__main__':
-    app.run()
+    app.run(host="0.0.0.0")
