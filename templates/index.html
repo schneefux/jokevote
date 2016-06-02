@@ -37,6 +37,11 @@
                             {% endif %}
                         </button>
                     </form>
+                    {% if joke.mine %}
+                    <div class="col s12 center">
+                        <i class="material-icons">stars</i>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             <div class="valign col s9 m10 {% if joke.reports>0 %}grey-text{% endif %}">

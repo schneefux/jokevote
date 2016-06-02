@@ -23,17 +23,20 @@ class dbProxy(object):
         self.c.execute("CREATE TABLE IF NOT EXISTS votes(id INTEGER PRIMARY KEY NOT NULL, ip TEXT, jokeid INTEGER, type INTEGER)")
 
     def create_v1(self):
-        self.c.execute("CREATE TABLE IF NOT EXISTS v1_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT)")
+        self.c.execute("CREATE TABLE IF NOT EXISTS v1_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT, user INTEGER)")
         self.c.execute("CREATE TABLE IF NOT EXISTS v1_users(id INTEGER PRIMARY KEY NOT NULL, identifier TEXT)")
         self.c.execute("CREATE TABLE IF NOT EXISTS v1_votes(id INTEGER PRIMARY KEY NOT NULL, joke INTEGER, user INTEGER, type TEXT)")
 
     def migrate_v0to1(self):
         self.create_v1()
 
+        self.c.execute("INSERT INTO v1_users(identifier) VALUES ('anonymous')")
+        anonymous = self.c.lastrowid
+
         # create new jokes
         j = self.c.execute("SELECT * FROM jokes").fetchall()
-        j = [(int(n['id']), n['text']) for n in j]
-        self.c.executemany("INSERT INTO v1_jokes(id, text, format) VALUES(?, ?, 'html')", j)
+        j = [(int(n['id']), n['text'], anonymous) for n in j]
+        self.c.executemany("INSERT INTO v1_jokes(id, text, format, user) VALUES(?, ?, 'html', ?)", j)
 
         votes = self.c.execute("SELECT * FROM votes").fetchall()
 
@@ -54,8 +57,6 @@ class dbProxy(object):
             self.c.execute("INSERT INTO v1_votes(joke, user, type) VALUES(?, ?, ?)", (vote['jokeid'], user, vtype))
 
         # create pre-v0 votes
-        self.c.execute("INSERT INTO v1_users(identifier) VALUES ('anonymous')")
-        anonymous = self.c.lastrowid
         jokes = self.c.execute("SELECT id FROM v1_jokes").fetchall()
         jokes = [int(j['id']) for j in jokes]
         for joke in jokes:
@@ -115,19 +116,21 @@ class dbProxy(object):
         l = self.c.execute("SELECT COUNT(*) FROM v1_jokes").fetchone()['COUNT(*)']
         return int(l/perpage)+1
 
-    def getJokes(self, perpage, page):
+    def getJokes(self, perpage, page, ip):
+        user = self.userByIp(ip)
         ret_jokes = []
         jokes = self.c.execute("SELECT * FROM v1_jokes").fetchall()
         for joke in jokes:
-            if joke['format'] == 'markdown':
-                html = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
-            if joke['format'] == 'html':
-
-                html = joke['text']
             ret_joke = {
                 'id': joke['id'],
-                'text': html
             }
+            ret_joke['locked'] = not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE joke=? AND user=?", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            ret_joke['mine'] = joke['user'] == user
+            if joke['format'] == 'markdown':
+                ret_joke['text'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
+            if joke['format'] == 'html':
+                ret_joke['text'] = joke['text']
+
             typemap = (
                 ("up", "upvotes"),
                 ("down", "downvotes"),
@@ -141,10 +144,6 @@ class dbProxy(object):
         ret_jokes = sorted(ret_jokes, key=self.sort, reverse=True)
         return ret_jokes[page*perpage:(page+1)*perpage]
 
-    def addJoke(self, text):
-        self.c.execute("INSERT INTO v1_jokes(text, format) VALUES(?, 'markdown')", (text,))
-        self.conn.commit()
-
     def userByIp(self, ip):
         user = self.c.execute("SELECT * FROM v1_users WHERE identifier=?", (ip,)).fetchone()
         if user:
@@ -153,6 +152,11 @@ class dbProxy(object):
             self.c.execute("INSERT INTO v1_users(identifier) VALUES(?)", (ip,))
             self.conn.commit()
             return self.c.lastrowid
+
+    def addJoke(self, text, ip):
+        user = self.userByIp(ip)
+        self.c.execute("INSERT INTO v1_jokes(text, format, user) VALUES(?, 'markdown', ?)", (text, user))
+        self.conn.commit()
 
     def voteJoke(self, objectId, down, ip):
         user = self.userByIp(ip)
@@ -194,20 +198,16 @@ def root():
 @app.route('/page/<int:num>')
 def page(num):
     numpages = db().getPages(PERPAGE)
-    jokes = db().getJokes(PERPAGE, num)
     ip = request.remote_addr
-    votes = db().getUserVotes(ip)
-    for joke in jokes:
-        if joke['id'] in votes:
-            joke['locked'] = True
-
+    jokes = db().getJokes(PERPAGE, num, ip)
     return render_template('index.html', currentpage=num, pages=[[]]*numpages, jokes=jokes)
 
 @app.route('/submit', methods=['POST'])
 def submit():
     text = request.form['text']
     page = request.form['redirpage']
-    db().addJoke(text)
+    ip = request.remote_addr
+    db().addJoke(text, ip)
     return redirect('/page/' + page)
 
 @app.route('/vote', methods=['POST'])
