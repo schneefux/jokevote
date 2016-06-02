@@ -30,22 +30,18 @@
                     <form action="/report" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="btn-flat col s12{% if joke.reported %} disabled{% endif %}" type="submit">
-                            {% if joke.reports>0 %}
+                        <button class="reportbtn btn-flat col s12{% if joke.reported %} disabled{% endif %}" type="submit">
                             <div class="row">
                                 <i class="material-icons col s6">report_problem</i>
-                                <span class="red-text col s6">{{ joke.reports }}</span>
+                                <span class="btnval red-text col s6" data-original="{% if joke.reported %}{{ joke.reports-1 }}{% else %}{{ joke.reports }}{% endif %}">{{ joke.reports }}</span>
                             </div>
-                            {% else %}
-                            <i class="material-icons">report_problem</i>
-                            {% endif %}
                         </button>
                     </form>
                     {% if joke.mine %}
                     <form action="/delete" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="btn-flat col s12" type="submit"><i class="material-icons">delete</i></button>
+                        <button class="deletebtn btn-flat col s12" type="submit"><i class="material-icons">delete</i></button>
                     </form>
                     {% endif %}
                 </div>
@@ -85,32 +81,73 @@
         $(document).ready(function() {
             $('.upvotebtn').click(function(e) { submitAjaxer.call(this, e, 'upvote'); });
             $('.downvotebtn').click(function(e) { submitAjaxer.call(this, e, 'downvote'); });
+            $('.reportbtn').click(function(e) { submitAjaxer.call(this, e, 'report'); });
+            $('.deletebtn').click(function(e) { submitAjaxer.call(this, e, 'delete'); });
 
             function submitAjaxer(e, type) {
                 e.preventDefault();
                 var form = $(this).closest('form');
-                var joke = $(this).closest('.joke');
+                var container = $(this).closest('div.row');
+                var data;
+                if (type == 'upvote' || type == 'downvote') {
+                    senddata = form.serialize() + '&vote=' + type;
+                } else {
+                    senddata = form.serialize();
+                }
                 $.ajax({
                     url: form.attr('action'),
                     type: "POST",
-                    data: form.serialize() + '&vote=' + type,
+                    data: senddata,
                     success: function(data) {
-                        var upvotebtn = $('.upvotebtn .btnval', form).first();
-                        var downvotebtn = $('.downvotebtn .btnval', form).first();
-                        var upvotes = parseInt(upvotebtn.data('original'));
-                        var downvotes = parseInt(downvotebtn.data('original'));
-                        upvotebtn.text();
-                        downvotebtn.text(downvotebtn.data('original'));
-                        upvotebtn.parent().removeClass('disabled');
-                        downvotebtn.parent().removeClass('disabled');
-                        upvotebtn.text(upvotes);
-                        downvotebtn.text(downvotes);
+                        if (type == 'delete') {
+                            var deletebtn = $('.deletebtn', container);
+                            var id = deletebtn.data('id');
+                            var undobtn = $('<button class="btn col s12"><i class="material-icon">delete undo</i></button>');
+                            undobtn.click(function() {
+                                $.ajax({
+                                    url: form.attr('action').replace(/\/delete$/, '/undelete'),
+                                    type: "POST",
+                                    data: senddata,
+                                    success: function() {
+                                        window.location.reload(false); // TODO rebuild DOM
+                                    }
+                                })
+                            });
+                            container.html(undobtn);
+                            return;
+                        }
+
+                        var upvotebtn = $('.upvotebtn', container);
+                        var downvotebtn = $('.downvotebtn', container);
+                        var reportbtn = $('.reportbtn', container);
+                        var upvotes = parseInt($('.btnval', upvotebtn).data('original'));
+                        var downvotes = parseInt($('.btnval', downvotebtn).data('original'));
+                        var reports = parseInt($('.btnval', reportbtn).data('original'));
+                        $('.btnval', upvotebtn).text(upvotes);
+                        $('.btnval', downvotebtn).text(downvotes);
+                        $('.btnval', reportbtn).text(reports);
+
+                        upvotebtn.removeClass('disabled');
+                        upvotebtn.removeClass('btn-flat');
+                        upvotebtn.addClass('btn');
+                        downvotebtn.removeClass('disabled');
+                        downvotebtn.removeClass('btn-flat');
+                        downvotebtn.addClass('btn');
+                        reportbtn.removeClass('disabled');
+
                         if (type == "upvote") {
-                            upvotebtn.text(upvotes+1);
-                            upvotebtn.parent().addClass('disabled');
+                            $('.btnval', upvotebtn).text(upvotes+1);
+                            upvotebtn.addClass('disabled');
                         } else if (type == "downvote") {
-                            downvotebtn.text(downvotes+1);
-                            downvotebtn.parent().addClass('disabled');
+                            $('.btnval', downvotebtn).text(downvotes+1);
+                            downvotebtn.addClass('disabled');
+                        } else if (type == "report") {
+                            $('.btnval', reportbtn).text(reports+1);
+                            reportbtn.addClass('disabled');
+                            downvotebtn.addClass('btn-flat');
+                            downvotebtn.removeClass('btn');
+                            upvotebtn.addClass('btn-flat');
+                            upvotebtn.removeClass('btn');
                         }
                     }
                 });

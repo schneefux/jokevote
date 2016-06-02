@@ -262,6 +262,15 @@ def delete():
         db().removeJoke(objectId, ip)
     return redirect('/page/' + page)
 
+@app.route('/undelete', methods=['POST'])
+def undelete():
+    objectId = int(request.form['id'])
+    page = request.form['redirpage']
+    ip = request.remote_addr
+    if objectId in db().getUserJokes(ip):
+        db().unvoteJoke(objectId, ip)
+    return redirect('/page/' + page)
+
 @app.route('/static/<path:path>')
 def get_static(path):
     return send_from_directory('static', path)
