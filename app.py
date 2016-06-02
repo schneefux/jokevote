@@ -113,14 +113,17 @@ class dbProxy(object):
         return score
 
     def getPages(self, perpage):
-        l = self.c.execute("SELECT COUNT(*) FROM v1_jokes").fetchone()['COUNT(*)']
+        l = len(self.getJokes())-1
         return int(l/perpage)+1
 
-    def getJokes(self, perpage, page, ip):
-        user = self.userByIp(ip)
+    def getJokes(self, perpage=None, page=None, ip=None):
+        user = self.userByIp(ip) if ip else -1
         ret_jokes = []
         jokes = self.c.execute("SELECT * FROM v1_jokes").fetchall()
         for joke in jokes:
+            if not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE type='delete' AND joke=?", (joke['id'],)).fetchone()['COUNT(*)'] == 0:
+                continue
+
             ret_joke = {
                 'id': joke['id'],
             }
@@ -142,7 +145,9 @@ class dbProxy(object):
             ret_jokes.append(ret_joke)
 
         ret_jokes = sorted(ret_jokes, key=self.sort, reverse=True)
-        return ret_jokes[page*perpage:(page+1)*perpage]
+        if page != None and perpage != None:
+            return ret_jokes[page*perpage:(page+1)*perpage]
+        return ret_jokes
 
     def userByIp(self, ip):
         user = self.c.execute("SELECT * FROM v1_users WHERE identifier=?", (ip,)).fetchone()
@@ -156,6 +161,11 @@ class dbProxy(object):
     def addJoke(self, text, ip):
         user = self.userByIp(ip)
         self.c.execute("INSERT INTO v1_jokes(text, format, user) VALUES(?, 'markdown', ?)", (text, user))
+        self.conn.commit()
+
+    def removeJoke(self, objectId, ip):
+        user = self.userByIp(ip)
+        self.c.execute("INSERT INTO v1_votes(joke, user, type) VALUES(?, ?, 'delete')", (objectId, user))
         self.conn.commit()
 
     def voteJoke(self, objectId, down, ip):
@@ -173,6 +183,12 @@ class dbProxy(object):
         votes = self.c.execute("SELECT joke FROM v1_votes WHERE user=?", (user,)).fetchall()
         votes = [v['joke'] for v in votes]
         return votes
+
+    def getUserJokes(self, ip):
+        user = self.userByIp(ip)
+        jokes = self.c.execute("SELECT id FROM v1_jokes WHERE user=?", (user,)).fetchall()
+        jokes = [j['id'] for j in jokes]
+        return jokes
 
 
 def db():
@@ -226,6 +242,15 @@ def report():
     ip = request.remote_addr
     if objectId not in db().getUserVotes(ip):
         db().reportJoke(objectId, ip)
+    return redirect('/page/' + page)
+
+@app.route('/delete', methods=['POST'])
+def delete():
+    objectId = int(request.form['id'])
+    page = request.form['redirpage']
+    ip = request.remote_addr
+    if objectId in db().getUserJokes(ip):
+        db().removeJoke(objectId, ip)
     return redirect('/page/' + page)
 
 @app.route('/static/<path:path>')

@@ -38,9 +38,11 @@
                         </button>
                     </form>
                     {% if joke.mine %}
-                    <div class="col s12 center">
-                        <i class="material-icons">stars</i>
-                    </div>
+                    <form action="/delete" method="post">
+                        <input type="hidden" name="id" value="{{ joke.id }}">
+                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                        <button class="btn-flat col s12" type="submit"><i class="material-icons">delete</i></button>
+                    </form>
                     {% endif %}
                 </div>
             </div>
