@@ -127,7 +127,9 @@ class dbProxy(object):
             ret_joke = {
                 'id': joke['id'],
             }
-            ret_joke['locked'] = not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE joke=? AND user=?", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            ret_joke['upvoted'] = not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE joke=? AND user=? AND type='up'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            ret_joke['downvoted'] = not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE joke=? AND user=? AND type='down'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            ret_joke['reported'] = not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE joke=? AND user=? AND type='report'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
             ret_joke['mine'] = joke['user'] == user
             if joke['format'] == 'markdown':
                 ret_joke['text'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
@@ -171,6 +173,11 @@ class dbProxy(object):
     def voteJoke(self, objectId, down, ip):
         user = self.userByIp(ip)
         self.c.execute("INSERT INTO v1_votes(joke, user, type) VALUES(?, ?, ?)", (objectId, user, 'down' if down else 'up'))
+        self.conn.commit()
+
+    def unvoteJoke(self, objectId, ip):
+        user = self.userByIp(ip)
+        self.c.execute("DELETE FROM v1_votes WHERE joke=? AND user=?", (objectId, user))
         self.conn.commit()
 
     def reportJoke(self, objectId, ip):
@@ -231,8 +238,9 @@ def vote():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
     ip = request.remote_addr
-    if objectId not in db().getUserVotes(ip):
-        db().voteJoke(objectId, request.form['vote'] == 'downvote', ip)
+    if objectId in db().getUserVotes(ip):
+        db().unvoteJoke(objectId, ip)
+    db().voteJoke(objectId, request.form['vote'] == 'downvote', ip)
     return redirect('/page/' + page)
 
 @app.route('/report', methods=['POST'])
@@ -240,8 +248,9 @@ def report():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
     ip = request.remote_addr
-    if objectId not in db().getUserVotes(ip):
-        db().reportJoke(objectId, ip)
+    if objectId in db().getUserVotes(ip):
+        db().unvoteJoke(objectId, ip)
+    db().reportJoke(objectId, ip)
     return redirect('/page/' + page)
 
 @app.route('/delete', methods=['POST'])
