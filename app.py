@@ -23,7 +23,7 @@ class dbProxy(object):
         self.c.execute("CREATE TABLE IF NOT EXISTS votes(id INTEGER PRIMARY KEY NOT NULL, ip TEXT, jokeid INTEGER, type INTEGER)")
 
     def create_v1(self):
-        self.c.execute("CREATE TABLE IF NOT EXISTS v1_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT)")
+        self.c.execute("CREATE TABLE IF NOT EXISTS v1_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT)")
         self.c.execute("CREATE TABLE IF NOT EXISTS v1_users(id INTEGER PRIMARY KEY NOT NULL, identifier TEXT)")
         self.c.execute("CREATE TABLE IF NOT EXISTS v1_votes(id INTEGER PRIMARY KEY NOT NULL, joke INTEGER, user INTEGER, type TEXT)")
 
@@ -33,7 +33,7 @@ class dbProxy(object):
         # create new jokes
         j = self.c.execute("SELECT * FROM jokes").fetchall()
         j = [(int(n['id']), n['text']) for n in j]
-        self.c.executemany("INSERT INTO v1_jokes(id, text) VALUES(?, ?)", j)
+        self.c.executemany("INSERT INTO v1_jokes(id, text, format) VALUES(?, ?, 'html')", j)
 
         votes = self.c.execute("SELECT * FROM votes").fetchall()
 
@@ -119,9 +119,14 @@ class dbProxy(object):
         ret_jokes = []
         jokes = self.c.execute("SELECT * FROM v1_jokes").fetchall()
         for joke in jokes:
+            if joke['format'] == 'markdown':
+                html = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
+            if joke['format'] == 'html':
+
+                html = joke['text']
             ret_joke = {
                 'id': joke['id'],
-                'text': joke['text']
+                'text': html
             }
             typemap = (
                 ("up", "upvotes"),
@@ -137,7 +142,7 @@ class dbProxy(object):
         return ret_jokes[page*perpage:(page+1)*perpage]
 
     def addJoke(self, text):
-        self.c.execute("INSERT INTO v1_jokes(text) VALUES(?)", (text,))
+        self.c.execute("INSERT INTO v1_jokes(text, format) VALUES(?, 'markdown')", (text,))
         self.conn.commit()
 
     def userByIp(self, ip):
@@ -201,9 +206,8 @@ def page(num):
 @app.route('/submit', methods=['POST'])
 def submit():
     text = request.form['text']
-    html = Markup(markdown.markdown(text, extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
     page = request.form['redirpage']
-    db().addJoke(html)
+    db().addJoke(text)
     return redirect('/page/' + page)
 
 @app.route('/vote', methods=['POST'])
