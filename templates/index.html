@@ -102,7 +102,7 @@
                         if (type == 'delete') {
                             var deletebtn = $('.deletebtn', container);
                             var id = deletebtn.data('id');
-                            var undobtn = $('<button class="btn col s12"><i class="material-icon">delete undo</i></button>');
+                            var undobtn = $('<button class="btn col s12"><i class="material-icons">delete undo</i></button>');
                             undobtn.click(function() {
                                 $.ajax({
                                     url: form.attr('action').replace(/\/delete$/, '/undelete'),
