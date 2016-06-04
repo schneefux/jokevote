@@ -138,7 +138,7 @@ class dbProxy(object):
 
     def getJokes(self, perpage=None, page=None, user=None):
         ret_jokes = []
-        jokes = self.c.execute("SELECT * FROM " + self.prefix + "_jokes").fetchall()
+        jokes = self.c.execute("SELECT * FROM " + self.prefix + "_jokes ORDER BY id ASC").fetchall()
         votewhere = "SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE "
         users = self.c.execute("SELECT id FROM " + self.prefix + "_users WHERE role='user'").fetchall()
         users = [u['id'] for u in users]
@@ -176,9 +176,10 @@ class dbProxy(object):
                 score -= self.c.execute(votewhere + "joke=? AND type='report' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 50
 
             ret_joke['score'] = score
+            ret_joke['freshness'] = jokes[-1]['id'] - joke['id']
             ret_jokes.append(ret_joke)
 
-        ret_jokes = sorted(ret_jokes, key=lambda j: j['score'], reverse=True)
+        ret_jokes = sorted(ret_jokes, key=lambda j: (j['score']+1)/pow(j['freshness']+1, 2), reverse=True)
         if page != None and perpage != None:
             return ret_jokes[page*perpage:(page+1)*perpage]
         return ret_jokes
