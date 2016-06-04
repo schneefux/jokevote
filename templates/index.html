@@ -9,8 +9,9 @@
 </head>
 <body>
     <script type="text/javascript" src="/static/jquery.min.js"></script>
+    <script type="text/javascript" src="/static/smoothstate.min.js"></script>
     <script type="text/javascript" src="/static/materialize.min.js"></script>
-    <div class="container">
+    <div class="container" id="main">
         <div class="row">
             <h3>Lehrersprüche</h3>
             <div class="section">
@@ -22,19 +23,16 @@
                 {% else %}
                 <form action="/login" method="post">
                     <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                    <div class="col s6 m4 l2 input-field">
+                    <div class="col s6 m4 l3 input-field">
                         <label for="user">Benutzer</label>
                         <input type="text" name="user">
                     </div>
-                    <div class="col s6 m4 l2 input-field">
+                    <div class="col s6 m4 l3 input-field">
                         <label for="user">Passwort</label>
                         <input type="password" name="password">
                     </div>
                     <div class="col s6 m4 l2">
-                        <button class="btn col s12" type="submit" name="action" value="login">Login</button>
-                    </div>
-                    <div class="col s6 m4 l2">
-                        <button class="btn col s12" type="submit" name="action" value="register">Anmelden</button>
+                        <button class="btn col s12" type="submit">Anmelden</button>
                     </div>
                 </form>
                 {% endif %}
@@ -53,20 +51,24 @@
             {% for joke in jokes %}
             <li class="collection-item row valign-wrapper">
                 <div class="col s3 m2 valign">
-                    <form action="/vote" method="post">
+                    <form action="/upvote" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="col s12 upvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.upvoted %} disabled{% endif %}" type="submit" name="vote" value="upvote">
+                        <button class="col s12 btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.upvoted %} disabled{% endif %}" type="submit">
                             <i class="material-icons">thumb_up</i> <span class="btnval" data-original="{% if joke.upvoted %}{{ joke.upvotes-1 }}{% else %}{{ joke.upvotes }}{% endif %}">{{ joke.upvotes }}</span>
                         </button>
-                        <button class="col s12 downvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.downvoted %} disabled{% endif %}" type="submit" name="vote" value="downvote">
+                    </form>
+                    <form action="/downvote" method="post">
+                        <input type="hidden" name="id" value="{{ joke.id }}">
+                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                        <button class="col s12 btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.downvoted %} disabled{% endif %}" type="submit">
                             <i class="material-icons">thumb_down</i> <span class="btnval" data-original="{% if joke.downvoted %}{{ joke.downvotes-1 }}{% else %}{{ joke.downvotes }}{% endif %}">{{ joke.downvotes }}</span>
                         </button>
                     </form>
                     <form action="/report" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="reportbtn btn-flat{% if joke.reported %} disabled{% endif %}" type="submit">
+                        <button class="col s12 btn-flat{% if joke.reported %} disabled{% endif %}" type="submit">
                             <i class="material-icons left">report_problem</i>
                             <span class="btnval red-text" data-original="{% if joke.reported %}{{ joke.reports-1 }}{% else %}{{ joke.reports }}{% endif %}">{{ joke.reports }}</span>
                         </button>
@@ -112,79 +114,7 @@
     </div>
     <script type="text/javascript">
         $(document).ready(function() {
-            $('.upvotebtn').click(function(e) { submitAjaxer.call(this, e, 'upvote'); });
-            $('.downvotebtn').click(function(e) { submitAjaxer.call(this, e, 'downvote'); });
-            $('.reportbtn').click(function(e) { submitAjaxer.call(this, e, 'report'); });
-            $('.deletebtn').click(function(e) { submitAjaxer.call(this, e, 'delete'); });
-
-            function submitAjaxer(e, type) {
-                e.preventDefault();
-                var form = $(this).closest('form');
-                var container = $(this).closest('div');
-                var data;
-                if (type == 'upvote' || type == 'downvote') {
-                    senddata = form.serialize() + '&vote=' + type;
-                } else {
-                    senddata = form.serialize();
-                }
-                $.ajax({
-                    url: form.attr('action'),
-                    type: "POST",
-                    data: senddata,
-                    success: function(data) {
-                        if (type == 'delete') {
-                            var deletebtn = $('.deletebtn', container);
-                            var id = deletebtn.data('id');
-                            var undobtn = $('<button class="btn col s12"><i class="material-icons">delete undo</i></button>');
-                            undobtn.click(function() {
-                                $.ajax({
-                                    url: form.attr('action').replace(/\/delete$/, '/undelete'),
-                                    type: "POST",
-                                    data: senddata,
-                                    success: function() {
-                                        window.location.reload(false); // TODO rebuild DOM
-                                    }
-                                })
-                            });
-                            container.html(undobtn);
-                            return;
-                        }
-
-                        var upvotebtn = $('.upvotebtn', container);
-                        var downvotebtn = $('.downvotebtn', container);
-                        var reportbtn = $('.reportbtn', container);
-                        var upvotes = parseInt($('.btnval', upvotebtn).data('original'));
-                        var downvotes = parseInt($('.btnval', downvotebtn).data('original'));
-                        var reports = parseInt($('.btnval', reportbtn).data('original'));
-                        $('.btnval', upvotebtn).text(upvotes);
-                        $('.btnval', downvotebtn).text(downvotes);
-                        $('.btnval', reportbtn).text(reports);
-
-                        upvotebtn.removeClass('disabled');
-                        upvotebtn.removeClass('btn-flat');
-                        upvotebtn.addClass('btn');
-                        downvotebtn.removeClass('disabled');
-                        downvotebtn.removeClass('btn-flat');
-                        downvotebtn.addClass('btn');
-                        reportbtn.removeClass('disabled');
-
-                        if (type == "upvote") {
-                            $('.btnval', upvotebtn).text(upvotes+1);
-                            upvotebtn.addClass('disabled');
-                        } else if (type == "downvote") {
-                            $('.btnval', downvotebtn).text(downvotes+1);
-                            downvotebtn.addClass('disabled');
-                        } else if (type == "report") {
-                            $('.btnval', reportbtn).text(reports+1);
-                            reportbtn.addClass('disabled');
-                            downvotebtn.addClass('btn-flat');
-                            downvotebtn.removeClass('btn');
-                            upvotebtn.addClass('btn-flat');
-                            upvotebtn.removeClass('btn');
-                        }
-                    }
-                });
-            }
+            $('#main').smoothState({prefetch: true, cacheLength: 2});
         });
     </script>
 </body>

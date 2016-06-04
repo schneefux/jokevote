@@ -290,13 +290,22 @@ def submit():
     db().addJoke(text, userid())
     return redirect('/page/' + page)
 
-@app.route('/vote', methods=['POST'])
-def vote():
+@app.route('/upvote', methods=['POST'])
+def upvote():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
     if objectId in db().getUserVotes(userid()):
         db().unvoteJoke(objectId, userid())
-    db().voteJoke(objectId, request.form['vote'] == 'downvote', userid())
+    db().voteJoke(objectId, False, userid())
+    return redirect('/page/' + page)
+
+@app.route('/downvote', methods=['POST'])
+def downvote():
+    objectId = int(request.form['id'])
+    page = request.form['redirpage']
+    if objectId in db().getUserVotes(userid()):
+        db().unvoteJoke(objectId, userid())
+    db().voteJoke(objectId, True, userid())
     return redirect('/page/' + page)
 
 @app.route('/report', methods=['POST'])
@@ -331,23 +340,17 @@ def login():
     cookie = session['guestlogin']
     name = request.form['user']
     pw = request.form['password']
-    skiplogin = False
-    if request.form['action'] == 'register':
-        if db().addUser(name, pw) == -1:
-            flash('Benutzer existiert bereits.')
-            skiplogin = True
-        else:
-            flash('Erfolgreich registriert.')
+    if db().addUser(name, pw) >= 0:
+        flash('Erfolgreich registriert.')
 
-    if not skiplogin:
-        res = db().getUser(name=name, password=pw)
-        if res == -2:
-            flash('Benutzer existiert nicht.')
-        if res == -1:
-            flash('Passwort falsch.')
-        if res >= 0:
-            session['userlogin'] = name
-            flash('Erfolgreich eingeloggt.')
+    res = db().getUser(name=name, password=pw)
+    if res == -2:
+        flash('Benutzer existiert nicht.')
+    if res == -1:
+        flash('Passwort falsch.')
+    if res >= 0:
+        session['userlogin'] = name
+        flash('Erfolgreich eingeloggt.')
     page = request.form['redirpage']
     return redirect('/page/' + page)
 
