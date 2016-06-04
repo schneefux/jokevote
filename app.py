@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 import markdown
+import hashlib
+import os
+from config import config
 from flask import (
     Flask,
     render_template,
@@ -7,7 +10,9 @@ from flask import (
     request,
     g,
     send_from_directory,
-    redirect
+    redirect,
+    session,
+    flash
 )
 import sqlite3
 
@@ -19,13 +24,29 @@ class dbProxy(object):
         self.c = self.conn.cursor()
 
     def create_v0(self):
-        self.c.execute("CREATE TABLE IF NOT EXISTS jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, upvotes INTEGER, downvotes INTEGER, reports INTEGER)")
-        self.c.execute("CREATE TABLE IF NOT EXISTS votes(id INTEGER PRIMARY KEY NOT NULL, ip TEXT, jokeid INTEGER, type INTEGER)")
+        self.c.execute("CREATE TABLE jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, upvotes INTEGER, downvotes INTEGER, reports INTEGER)")
+        self.c.execute("CREATE TABLE votes(id INTEGER PRIMARY KEY NOT NULL, ip TEXT, jokeid INTEGER, type INTEGER)")
+        self.conn.commit()
 
     def create_v1(self):
-        self.c.execute("CREATE TABLE IF NOT EXISTS v1_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT, user INTEGER)")
-        self.c.execute("CREATE TABLE IF NOT EXISTS v1_users(id INTEGER PRIMARY KEY NOT NULL, identifier TEXT)")
-        self.c.execute("CREATE TABLE IF NOT EXISTS v1_votes(id INTEGER PRIMARY KEY NOT NULL, joke INTEGER, user INTEGER, type TEXT)")
+        self.c.execute("CREATE TABLE v1_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT, user INTEGER)")
+        self.c.execute("CREATE TABLE v1_users(id INTEGER PRIMARY KEY NOT NULL, identifier TEXT)")
+        self.c.execute("CREATE TABLE v1_votes(id INTEGER PRIMARY KEY NOT NULL, joke INTEGER, user INTEGER, type TEXT)")
+        self.conn.commit()
+
+    def create_v1a(self):
+        self.c.execute("CREATE TABLE v1a_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT, user INTEGER)")
+        self.c.execute("CREATE TABLE v1a_votes(id INTEGER PRIMARY KEY NOT NULL, joke INTEGER, user INTEGER, type TEXT)")
+        self.c.execute("CREATE TABLE v1a_users(id INTEGER PRIMARY KEY NOT NULL, identifier TEXT, role TEXT DEFAULT 'guest', password TEXT DEFAULT '', salt TEXT DEFAULT '')")
+        self.conn.commit()
+
+    def migrate_v1to1a(self):
+        self.c.execute("ALTER TABLE v1_jokes RENAME TO v1a_jokes")
+        self.c.execute("ALTER TABLE v1_votes RENAME TO v1a_votes")
+        self.c.execute("CREATE TABLE v1a_users(id INTEGER PRIMARY KEY, identifier TEXT, role TEXT DEFAULT 'guest', password TEXT DEFAULT '', salt TEXT DEFAULT '')")
+        self.c.execute("INSERT INTO v1a_users(id, identifier) SELECT id, identifier FROM v1_users")
+        self.c.execute("DROP TABLE v1_users")
+        self.conn.commit()
 
     def migrate_v0to1(self):
         self.create_v1()
@@ -81,21 +102,26 @@ class dbProxy(object):
 
     def database_v(self):
         versions = {
-            'jokes': 0,
-            'v1_jokes': 1
+            'jokes': '0',
+            'v1_jokes': '1',
+            'v1a_jokes': '1a'
         }
         for ver in versions:
             if self.c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", (ver,)).fetchone()['COUNT(*)'] == 1:
                 return versions[ver]
-        return -1
+        return '-1'
 
     def create(self):
-        if self.database_v() == 0:
+        if self.database_v() == '0':
             print("migrating v0 to v1")
             self.migrate_v0to1()
-        if self.database_v() == -1:
-            print("creating new v1 db")
-            self.create_v1()
+        if self.database_v() == '1':
+            print("migrating v1 to v1a")
+            self.migrate_v1to1a()
+        if self.database_v() == '-1':
+            print("creating new v1a db")
+            self.create_v1a()
+        self.prefix = "v1a"
 
     def close(self):
         self.conn.close()
@@ -116,20 +142,19 @@ class dbProxy(object):
         l = len(self.getJokes())-1
         return int(l/perpage)+1
 
-    def getJokes(self, perpage=None, page=None, ip=None):
-        user = self.userByIp(ip) if ip else -1
+    def getJokes(self, perpage=None, page=None, user=None):
         ret_jokes = []
-        jokes = self.c.execute("SELECT * FROM v1_jokes").fetchall()
+        jokes = self.c.execute("SELECT * FROM " + self.prefix + "_jokes").fetchall()
         for joke in jokes:
-            if not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE type='delete' AND joke=?", (joke['id'],)).fetchone()['COUNT(*)'] == 0:
+            if not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE type='delete' AND joke=?", (joke['id'],)).fetchone()['COUNT(*)'] == 0:
                 continue
 
             ret_joke = {
                 'id': joke['id'],
             }
-            ret_joke['upvoted'] = not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE joke=? AND user=? AND type='up'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
-            ret_joke['downvoted'] = not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE joke=? AND user=? AND type='down'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
-            ret_joke['reported'] = not self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE joke=? AND user=? AND type='report'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            ret_joke['upvoted'] = not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND user=? AND type='up'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            ret_joke['downvoted'] = not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND user=? AND type='down'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            ret_joke['reported'] = not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND user=? AND type='report'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
             ret_joke['mine'] = joke['user'] == user
             if joke['format'] == 'markdown':
                 ret_joke['text'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
@@ -142,7 +167,7 @@ class dbProxy(object):
                 ("report", "reports")
             )
             for key, tag in typemap:
-                ret_joke[tag] = self.c.execute("SELECT COUNT(*) FROM v1_votes WHERE joke=? AND type=?", (joke['id'], key)).fetchone()['COUNT(*)']
+                ret_joke[tag] = self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND type=?", (joke['id'], key)).fetchone()['COUNT(*)']
 
             ret_jokes.append(ret_joke)
 
@@ -151,49 +176,70 @@ class dbProxy(object):
             return ret_jokes[page*perpage:(page+1)*perpage]
         return ret_jokes
 
-    def userByIp(self, ip):
-        user = self.c.execute("SELECT * FROM v1_users WHERE identifier=?", (ip,)).fetchone()
-        if user:
-            return user['id']
+    def addUser(self, name, password):
+        if self.getUser(name=name) != -2:
+            return -1  # already registered
+        password = password.encode('utf-8')
+        salt = os.urandom(32).hex().encode('utf-8')
+        password = hashlib.sha512(password + salt).hexdigest()
+        self.c.execute("INSERT INTO " + self.prefix + "_users(identifier, password, salt, role) VALUES(?, ?, ?, 'user')", (name, password, salt))
+        self.conn.commit()
+        return self.c.lastrowid
+
+    def getUser(self, cookie=None, name=None, password=None):
+        # cookie != None: return or create guest uid
+        # name != None: return user uid or -2 (not found)
+        # name, password != None: return user uid, -2 (not found) or -1 (wrong password)
+        if cookie != None:
+            user = self.c.execute("SELECT id FROM " + self.prefix + "_users WHERE role='guest' AND identifier=?", (cookie,)).fetchone()
+            if user:  # existing guest
+                uid = int(user['id'])
+            else:  # create guest
+                self.c.execute("INSERT INTO " + self.prefix + "_users(identifier) VALUES(?)", (cookie,))
+                self.conn.commit()
+                uid = self.c.lastrowid
         else:
-            self.c.execute("INSERT INTO v1_users(identifier) VALUES(?)", (ip,))
-            self.conn.commit()
-            return self.c.lastrowid
+            if name != None:
+                user = self.c.execute("SELECT id FROM " + self.prefix + "_users WHERE role='user' AND identifier=?", (name,)).fetchone()
+                if user:  # existing user
+                    uid = int(user['id'])
+                    if password != None:
+                        password = password.encode('utf-8')
+                        auth = self.c.execute("SELECT password, salt FROM " + self.prefix + "_users WHERE id=?", (uid,)).fetchone()
+                        if hashlib.sha512(password + auth['salt']).hexdigest() != auth['password']:
+                            uid = -1  # auth failed
+                else:
+                    uid = -2 # nonexistent
 
-    def addJoke(self, text, ip):
-        user = self.userByIp(ip)
-        self.c.execute("INSERT INTO v1_jokes(text, format, user) VALUES(?, 'markdown', ?)", (text, user))
+        return uid
+
+    def addJoke(self, text, user):
+        self.c.execute("INSERT INTO " + self.prefix + "_jokes(text, format, user) VALUES(?, 'markdown', ?)", (text, user))
         self.conn.commit()
 
-    def removeJoke(self, objectId, ip):
-        user = self.userByIp(ip)
-        self.c.execute("INSERT INTO v1_votes(joke, user, type) VALUES(?, ?, 'delete')", (objectId, user))
+    def removeJoke(self, objectId, user):
+        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, 'delete')", (objectId, user))
         self.conn.commit()
 
-    def voteJoke(self, objectId, down, ip):
-        user = self.userByIp(ip)
-        self.c.execute("INSERT INTO v1_votes(joke, user, type) VALUES(?, ?, ?)", (objectId, user, 'down' if down else 'up'))
+    def voteJoke(self, objectId, down, user):
+        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, ?)", (objectId, user, 'down' if down else 'up'))
         self.conn.commit()
 
-    def unvoteJoke(self, objectId, ip):
-        user = self.userByIp(ip)
-        self.c.execute("DELETE FROM v1_votes WHERE joke=? AND user=?", (objectId, user))
+    def unvoteJoke(self, objectId, user):
+        self.c.execute("DELETE FROM " + self.prefix + "_votes WHERE joke=? AND user=?", (objectId, user))
         self.conn.commit()
 
-    def reportJoke(self, objectId, ip):
-        user = self.userByIp(ip)
-        self.c.execute("INSERT INTO v1_votes(joke, user, type) VALUES(?, ?, 'report')", (objectId, user))
+    def reportJoke(self, objectId, user):
+        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, 'report')", (objectId, user))
         self.conn.commit()
 
-    def getUserVotes(self, ip):
-        user = self.userByIp(ip)
-        votes = self.c.execute("SELECT joke FROM v1_votes WHERE user=?", (user,)).fetchall()
+    def getUserVotes(self, user):
+        votes = self.c.execute("SELECT joke FROM " + self.prefix + "_votes WHERE user=?", (user,)).fetchall()
         votes = [v['joke'] for v in votes]
         return votes
 
-    def getUserJokes(self, ip):
-        user = self.userByIp(ip)
-        jokes = self.c.execute("SELECT id FROM v1_jokes WHERE user=?", (user,)).fetchall()
+    def getUserJokes(self, user):
+        jokes = self.c.execute("SELECT id FROM " + self.prefix + "_jokes WHERE user=?", (user,)).fetchall()
         jokes = [j['id'] for j in jokes]
         return jokes
 
@@ -218,63 +264,107 @@ def close_db(exception):
 def root():
     return page(0)
 
+def userid():
+    if 'userlogin' in session:
+        uid = db().getUser(name=session['userlogin'])
+        if uid != -2:
+            return uid
+    if not 'guestlogin' in session:
+        session['guestlogin'] = os.urandom(32).hex()
+    return db().getUser(cookie=session['guestlogin'])
+
 @app.route('/page/<int:num>')
 def page(num):
     numpages = db().getPages(PERPAGE)
-    ip = request.remote_addr
-    jokes = db().getJokes(PERPAGE, num, ip)
-    return render_template('index.html', currentpage=num, pages=[[]]*numpages, jokes=jokes)
+    jokes = db().getJokes(PERPAGE, num, userid())
+    user = {'loggedin': False}
+    if 'userlogin' in session:
+        user['loggedin'] = True
+        user['name'] = session['userlogin']
+    return render_template('index.html', currentpage=num, pages=[[]]*numpages, jokes=jokes, user=user)
 
 @app.route('/submit', methods=['POST'])
 def submit():
     text = request.form['text']
     page = request.form['redirpage']
-    ip = request.remote_addr
-    db().addJoke(text, ip)
+    db().addJoke(text, userid())
     return redirect('/page/' + page)
 
 @app.route('/vote', methods=['POST'])
 def vote():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    ip = request.remote_addr
-    if objectId in db().getUserVotes(ip):
-        db().unvoteJoke(objectId, ip)
-    db().voteJoke(objectId, request.form['vote'] == 'downvote', ip)
+    if objectId in db().getUserVotes(userid()):
+        db().unvoteJoke(objectId, userid())
+    db().voteJoke(objectId, request.form['vote'] == 'downvote', userid())
     return redirect('/page/' + page)
 
 @app.route('/report', methods=['POST'])
 def report():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    ip = request.remote_addr
-    if objectId in db().getUserVotes(ip):
-        db().unvoteJoke(objectId, ip)
-    db().reportJoke(objectId, ip)
+    if objectId in db().getUserVotes(userid()):
+        db().unvoteJoke(objectId, userid())
+    db().reportJoke(objectId, userid())
     return redirect('/page/' + page)
 
 @app.route('/delete', methods=['POST'])
 def delete():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    ip = request.remote_addr
-    if objectId in db().getUserJokes(ip):
-        db().removeJoke(objectId, ip)
+    if objectId in db().getUserJokes(userid()):
+        db().removeJoke(objectId, userid())
     return redirect('/page/' + page)
 
 @app.route('/undelete', methods=['POST'])
 def undelete():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    ip = request.remote_addr
-    if objectId in db().getUserJokes(ip):
-        db().unvoteJoke(objectId, ip)
+    if objectId in db().getUserJokes(userid()):
+        db().unvoteJoke(objectId, userid())
+    return redirect('/page/' + page)
+
+@app.route('/login', methods=['POST'])
+def login():
+    if not 'guestlogin' in session:
+        session['guestlogin'] = os.urandom(32).hex()
+    cookie = session['guestlogin']
+    name = request.form['user']
+    pw = request.form['password']
+    skiplogin = False
+    if request.form['action'] == 'register':
+        if db().addUser(name, pw) == -1:
+            flash('Benutzer existiert bereits.')
+            skiplogin = True
+        else:
+            flash('Erfolgreich registriert.')
+
+    if not skiplogin:
+        res = db().getUser(name=name, password=pw)
+        if res == -2:
+            flash('Benutzer existiert nicht.')
+        if res == -1:
+            flash('Passwort falsch.')
+        if res >= 0:
+            session['userlogin'] = name
+            flash('Erfolgreich eingeloggt.')
+    page = request.form['redirpage']
+    return redirect('/page/' + page)
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    if 'userlogin' in session:
+        del session['userlogin']
+        flash('Ausgeloggt.')
+    session['guestlogin'] = os.urandom(32).hex()
+    page = request.form['redirpage']
     return redirect('/page/' + page)
 
 @app.route('/static/<path:path>')
 def get_static(path):
     return send_from_directory('static', path)
 
-app.debug = True
+app.debug = config['debug']
+app.secret_key = config['secret_key']
 if __name__ == '__main__':
     app.run(host="0.0.0.0")
