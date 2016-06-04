@@ -171,9 +171,9 @@ class dbProxy(object):
             score -= self.c.execute(votewhere + "joke=? AND type='report'", (joke['id'],)).fetchone()['COUNT(*)'] * 5
             for u in users:
                 # user's scores count 10 times more
-                score += self.c.execute(votewhere + "joke=? AND type='up' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 10
-                score -= self.c.execute(votewhere + "joke=? AND type='down' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 10
-                score -= self.c.execute(votewhere + "joke=? AND type='report' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 50
+                score += self.c.execute(votewhere + "joke=? AND type='up' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 9
+                score -= self.c.execute(votewhere + "joke=? AND type='down' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 9
+                score -= self.c.execute(votewhere + "joke=? AND type='report' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 45
 
             ret_joke['score'] = score
             ret_joke['freshness'] = jokes[-1]['id'] - joke['id']
