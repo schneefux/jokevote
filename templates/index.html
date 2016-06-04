@@ -58,46 +58,46 @@
                 {% endwith %}
             </div>
         </div>
-        <div class="divider"></div>
-        {% for joke in jokes %}
-        <div class="row section valign-wrapper">
-            <div class="col s3 m2">
-                <div class="row joke">
-                    <form action="/vote" method="post" class="voteform">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="upvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.upvoted %} disabled{% endif %} col s12" type="submit" name="vote" value="upvote">
-                            <i class="material-icons">thumb_up</i> <span class="btnval" data-original="{% if joke.upvoted %}{{ joke.upvotes-1 }}{% else %}{{ joke.upvotes }}{% endif %}">{{ joke.upvotes }}</span>
-                        </button>
-                        <button class="downvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.downvoted %} disabled{% endif %} col s12" type="submit" name="vote" value="downvote">
-                            <i class="material-icons">thumb_down</i> <span class="btnval" data-original="{% if joke.downvoted %}{{ joke.downvotes-1 }}{% else %}{{ joke.downvotes }}{% endif %}">{{ joke.downvotes }}</span>
-                        </button>
-                    </form>
-                    <form action="/report" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="reportbtn btn-flat col s12{% if joke.reported %} disabled{% endif %}" type="submit">
-                            <div class="row">
-                                <i class="material-icons col s6">report_problem</i>
-                                <span class="btnval red-text col s6" data-original="{% if joke.reported %}{{ joke.reports-1 }}{% else %}{{ joke.reports }}{% endif %}">{{ joke.reports }}</span>
-                            </div>
-                        </button>
-                    </form>
-                    {% if joke.mine %}
-                    <form action="/delete" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="deletebtn btn-flat col s12" type="submit"><i class="material-icons">delete</i></button>
-                    </form>
-                    {% endif %}
+        <ul class="collection">
+            {% for joke in jokes %}
+            <li class="collection-item row">
+                <div class="col s3 m2">
+                    <div class="row joke">
+                        <form action="/vote" method="post" class="voteform">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                            <button class="upvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.upvoted %} disabled{% endif %} col s12" type="submit" name="vote" value="upvote">
+                                <i class="material-icons">thumb_up</i> <span class="btnval" data-original="{% if joke.upvoted %}{{ joke.upvotes-1 }}{% else %}{{ joke.upvotes }}{% endif %}">{{ joke.upvotes }}</span>
+                            </button>
+                            <button class="downvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.downvoted %} disabled{% endif %} col s12" type="submit" name="vote" value="downvote">
+                                <i class="material-icons">thumb_down</i> <span class="btnval" data-original="{% if joke.downvoted %}{{ joke.downvotes-1 }}{% else %}{{ joke.downvotes }}{% endif %}">{{ joke.downvotes }}</span>
+                            </button>
+                        </form>
+                        <form action="/report" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                            <button class="reportbtn btn-flat col s12{% if joke.reported %} disabled{% endif %}" type="submit">
+                                <div class="row">
+                                    <i class="material-icons col s6">report_problem</i>
+                                    <span class="btnval red-text col s6" data-original="{% if joke.reported %}{{ joke.reports-1 }}{% else %}{{ joke.reports }}{% endif %}">{{ joke.reports }}</span>
+                                </div>
+                            </button>
+                        </form>
+                        {% if joke.mine %}
+                        <form action="/delete" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                            <button class="deletebtn btn-flat col s12" type="submit"><i class="material-icons">delete</i></button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
-            <div class="valign col s9 m10 {% if joke.reports>0 %}grey-text{% endif %}">
-                {{ joke.text|safe }}
-            </div>
-        </div>
-        <div class="divider"></div>
-        {% endfor %}
+                <div class="col s9 m10 {% if joke.reports>0 %}grey-text{% endif %}">
+                    {{ joke.text|safe }}
+                </div>
+            </li>
+            {% endfor %}
+            </ul>
         <div class="section center">
             <ul class="pagination">
                 <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}"><i class="material-icons">chevron_left</i></a></li>
