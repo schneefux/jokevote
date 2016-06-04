@@ -132,12 +132,6 @@ class dbProxy(object):
             d[col[0]] = row[idx]
         return d
 
-    def sort(self, joke):
-        #interactions = joke["reports"]*5 + joke["upvotes"] + joke["downvotes"] + 1
-        #score = 1/interactions * (joke["upvotes"]+1)/interactions
-        score = joke["upvotes"] - joke["downvotes"] - joke["reports"]*5
-        return score
-
     def getPages(self, perpage):
         l = len(self.getJokes())-1
         return int(l/perpage)+1
@@ -145,33 +139,46 @@ class dbProxy(object):
     def getJokes(self, perpage=None, page=None, user=None):
         ret_jokes = []
         jokes = self.c.execute("SELECT * FROM " + self.prefix + "_jokes").fetchall()
+        votewhere = "SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE "
+        users = self.c.execute("SELECT id FROM " + self.prefix + "_users WHERE role='user'").fetchall()
+        users = [u['id'] for u in users]
         for joke in jokes:
+            # skip jokes marked as deleted
             if not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE type='delete' AND joke=?", (joke['id'],)).fetchone()['COUNT(*)'] == 0:
                 continue
 
             ret_joke = {
-                'id': joke['id'],
+                'id': joke['id']
             }
-            ret_joke['upvoted'] = not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND user=? AND type='up'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
-            ret_joke['downvoted'] = not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND user=? AND type='down'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
-            ret_joke['reported'] = not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND user=? AND type='report'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            # mark jokes the user has already interacted with
+            ret_joke['upvoted'] = not self.c.execute(votewhere + "joke=? AND user=? AND type='up'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            ret_joke['downvoted'] = not self.c.execute(votewhere + "joke=? AND user=? AND type='down'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            ret_joke['reported'] = not self.c.execute(votewhere + "joke=? AND user=? AND type='report'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
+            # allow deletion
             ret_joke['mine'] = joke['user'] == user
+            # convert md->html if needed
             if joke['format'] == 'markdown':
                 ret_joke['text'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
             if joke['format'] == 'html':
                 ret_joke['text'] = joke['text']
 
-            typemap = (
-                ("up", "upvotes"),
-                ("down", "downvotes"),
-                ("report", "reports")
-            )
-            for key, tag in typemap:
-                ret_joke[tag] = self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND type=?", (joke['id'], key)).fetchone()['COUNT(*)']
+            ret_joke['reports'] = self.c.execute(votewhere + "joke=? AND type='report'", (joke['id'],)).fetchone()['COUNT(*)']
+            # actual scoring
+            # TODO optimize queries
+            score = 0
+            score += self.c.execute(votewhere + "joke=? AND type='up'", (joke['id'],)).fetchone()['COUNT(*)']
+            score -= self.c.execute(votewhere + "joke=? AND type='down'", (joke['id'],)).fetchone()['COUNT(*)']
+            score -= self.c.execute(votewhere + "joke=? AND type='report'", (joke['id'],)).fetchone()['COUNT(*)'] * 5
+            for u in users:
+                # user's scores count 10 times more
+                score += self.c.execute(votewhere + "joke=? AND type='up' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 10
+                score -= self.c.execute(votewhere + "joke=? AND type='down' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 10
+                score -= self.c.execute(votewhere + "joke=? AND type='report' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 50
 
+            ret_joke['score'] = score
             ret_jokes.append(ret_joke)
 
-        ret_jokes = sorted(ret_jokes, key=self.sort, reverse=True)
+        ret_jokes = sorted(ret_jokes, key=lambda j: j['score'], reverse=True)
         if page != None and perpage != None:
             return ret_jokes[page*perpage:(page+1)*perpage]
         return ret_jokes
