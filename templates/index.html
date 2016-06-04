@@ -107,16 +107,18 @@
                 <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}"><i class="material-icons">chevron_right</i></a></li>
             </ul>
         </div>
-        <div class="divider hide-on-small-only"></div>
-        <div class="section hide-on-small-only">
+        <div class="divider"></div>
+        <div class="section">
             <form action="/submit" method="post">
                 <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                <div class="row valign-wrapper">
-                    <div class="col s10 input-field">
-                        <label for="text">Neuen Spruch hinzufügen</label>
-                        <textarea class="materialize-textarea" name="text"></textarea>
+                <div class="row">
+                    <div class="col s12 m9">
+                        <div class="input-field">
+                            <label for="text">Neuen Spruch hinzufügen</label>
+                            <textarea class="materialize-textarea" name="text"></textarea>
+                        </div>
                     </div>
-                    <div class="col s3 valign">
+                    <div class="col s12 m3">
                         <input type="submit" class="btn" value="hinzufügen">
                     </div>
                 </div>
