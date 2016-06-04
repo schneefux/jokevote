@@ -12,92 +12,79 @@
     <script type="text/javascript" src="/static/materialize.min.js"></script>
     <div class="container">
         <div class="row">
-            <div class="col s12 m6">
-                <h3>Lehrersprüche</h3>
-            </div>
-            <div class="col s12 m6 row">
+            <h3>Lehrersprüche</h3>
+            <div class="section">
                 {% if user.loggedin %}
-                <div class="col s12 m4 offset-m8 row valign-wrapper">
-                    <div class="col s6 m12">
-                        <p class="chip">{{ user.name }}</p>
-                    </div>
-                    <div class="col s6 m12 valign">
-                        <form action="/logout" method="post">
-                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                            <button class="btn" type="submit">Logout</button>
-                        </form>
-                    </div>
-                </div>
+                <form action="/logout" method="post">
+                    <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                    <button class="btn" type="submit">Logout ({{ user.name }})</button>
+                </form>
                 {% else %}
                 <form action="/login" method="post">
                     <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                    <div class="col s6 input-field">
+                    <div class="col s6 m4 l2 input-field">
                         <label for="user">Benutzer</label>
                         <input type="text" name="user">
                     </div>
-                    <div class="col s6 input-field">
+                    <div class="col s6 m4 l2 input-field">
                         <label for="user">Passwort</label>
                         <input type="password" name="password">
                     </div>
-                    <div class="col s6">
-                        <button class="btn" type="submit" name="action" value="login">Login</button>
+                    <div class="col s6 m4 l2">
+                        <button class="btn col s12" type="submit" name="action" value="login">Login</button>
                     </div>
-                    <div class="col s6">
-                        <button class="btn" type="submit" name="action" value="register">Anmelden</button>
+                    <div class="col s6 m4 l2">
+                        <button class="btn col s12" type="submit" name="action" value="register">Anmelden</button>
                     </div>
                 </form>
                 {% endif %}
-                {% with msgs = get_flashed_messages() %}
-                    {% if msgs %}
-                <div class="col s12 row">
-                    {% for msg in msgs %}
-                    <p>{{ msg }}</p>
-                    {% endfor %}
-                </div>
-                    {% endif %}
-                {% endwith %}
             </div>
         </div>
+        {% with msgs = get_flashed_messages() %}
+            {% if msgs %}
+        <div>
+            {% for msg in msgs %}
+            <p>{{ msg }}</p>
+            {% endfor %}
+        </div>
+            {% endif %}
+        {% endwith %}
         <ul class="collection">
             {% for joke in jokes %}
-            <li class="collection-item row">
-                <div class="col s3 m2">
-                    <div class="row joke">
-                        <form action="/vote" method="post" class="voteform">
-                            <input type="hidden" name="id" value="{{ joke.id }}">
-                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                            <button class="upvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.upvoted %} disabled{% endif %} col s12" type="submit" name="vote" value="upvote">
-                                <i class="material-icons">thumb_up</i> <span class="btnval" data-original="{% if joke.upvoted %}{{ joke.upvotes-1 }}{% else %}{{ joke.upvotes }}{% endif %}">{{ joke.upvotes }}</span>
-                            </button>
-                            <button class="downvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.downvoted %} disabled{% endif %} col s12" type="submit" name="vote" value="downvote">
-                                <i class="material-icons">thumb_down</i> <span class="btnval" data-original="{% if joke.downvoted %}{{ joke.downvotes-1 }}{% else %}{{ joke.downvotes }}{% endif %}">{{ joke.downvotes }}</span>
-                            </button>
-                        </form>
-                        <form action="/report" method="post">
-                            <input type="hidden" name="id" value="{{ joke.id }}">
-                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                            <button class="reportbtn btn-flat col s12{% if joke.reported %} disabled{% endif %}" type="submit">
-                                <div class="row">
-                                    <i class="material-icons col s6">report_problem</i>
-                                    <span class="btnval red-text col s6" data-original="{% if joke.reported %}{{ joke.reports-1 }}{% else %}{{ joke.reports }}{% endif %}">{{ joke.reports }}</span>
-                                </div>
-                            </button>
-                        </form>
-                        {% if joke.mine %}
-                        <form action="/delete" method="post">
-                            <input type="hidden" name="id" value="{{ joke.id }}">
-                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                            <button class="deletebtn btn-flat col s12" type="submit"><i class="material-icons">delete</i></button>
-                        </form>
-                        {% endif %}
-                    </div>
+            <li class="collection-item row valign-wrapper">
+                <div class="col s3 m2 valign">
+                    <form action="/vote" method="post">
+                        <input type="hidden" name="id" value="{{ joke.id }}">
+                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                        <button class="col s12 upvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.upvoted %} disabled{% endif %}" type="submit" name="vote" value="upvote">
+                            <i class="material-icons">thumb_up</i> <span class="btnval" data-original="{% if joke.upvoted %}{{ joke.upvotes-1 }}{% else %}{{ joke.upvotes }}{% endif %}">{{ joke.upvotes }}</span>
+                        </button>
+                        <button class="col s12 downvotebtn btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.downvoted %} disabled{% endif %}" type="submit" name="vote" value="downvote">
+                            <i class="material-icons">thumb_down</i> <span class="btnval" data-original="{% if joke.downvoted %}{{ joke.downvotes-1 }}{% else %}{{ joke.downvotes }}{% endif %}">{{ joke.downvotes }}</span>
+                        </button>
+                    </form>
+                    <form action="/report" method="post">
+                        <input type="hidden" name="id" value="{{ joke.id }}">
+                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                        <button class="reportbtn btn-flat{% if joke.reported %} disabled{% endif %}" type="submit">
+                            <i class="material-icons left">report_problem</i>
+                            <span class="btnval red-text" data-original="{% if joke.reported %}{{ joke.reports-1 }}{% else %}{{ joke.reports }}{% endif %}">{{ joke.reports }}</span>
+                        </button>
+                    </form>
+                    {% if joke.mine %}
+                    <form action="/delete" method="post">
+                        <input type="hidden" name="id" value="{{ joke.id }}">
+                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                        <button class="deletebtn btn-flat" type="submit"><i class="material-icons">delete</i></button>
+                    </form>
+                    {% endif %}
                 </div>
-                <div class="col s9 m10 {% if joke.reports>0 %}grey-text{% endif %}">
+                <div class="flow-text col s9 m10 {% if joke.reports>0 %}grey-text{% endif %}" style="line-height: 1.5">
                     {{ joke.text|safe }}
                 </div>
             </li>
             {% endfor %}
-            </ul>
+        </ul>
         <div class="section center">
             <ul class="pagination">
                 <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}"><i class="material-icons">chevron_left</i></a></li>
@@ -112,11 +99,9 @@
             <form action="/submit" method="post">
                 <input type="hidden" name="redirpage" value="{{ currentpage }}">
                 <div class="row">
-                    <div class="col s12 m9">
-                        <div class="input-field">
-                            <label for="text">Neuen Spruch hinzufügen</label>
-                            <textarea class="materialize-textarea" name="text"></textarea>
-                        </div>
+                    <div class="col s12 m9 input-field">
+                        <label for="text">Neuen Spruch hinzufügen</label>
+                        <textarea class="materialize-textarea" name="text"></textarea>
                     </div>
                     <div class="col s12 m3">
                         <input type="submit" class="btn" value="hinzufügen">
@@ -135,7 +120,7 @@
             function submitAjaxer(e, type) {
                 e.preventDefault();
                 var form = $(this).closest('form');
-                var container = $(this).closest('div.row');
+                var container = $(this).closest('div');
                 var data;
                 if (type == 'upvote' || type == 'downvote') {
                     senddata = form.serialize() + '&vote=' + type;
