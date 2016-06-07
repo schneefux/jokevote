@@ -27,36 +27,37 @@ class dbProxy(object):
         self.c = self.conn.cursor()
 
         if self.database_v() == '0':
-            print("migrating v0 to v1")
             self.migrate_v0to1()
         if self.database_v() == '1':
-            print("migrating v1 to v1a")
             self.migrate_v1to1a()
         if self.database_v() == '-1':
-            print("creating new v1a db")
             self.create_v1a()
 
         self.prefix = "v1a"
         self.rootUser(rootName)
 
     def create_v0(self):
+        app.logger.warning("creating new v0 database")
         self.c.execute("CREATE TABLE jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, upvotes INTEGER, downvotes INTEGER, reports INTEGER)")
         self.c.execute("CREATE TABLE votes(id INTEGER PRIMARY KEY NOT NULL, ip TEXT, jokeid INTEGER, type INTEGER)")
         self.conn.commit()
 
     def create_v1(self):
+        app.logger.warning("creating new v1 database")
         self.c.execute("CREATE TABLE v1_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT, user INTEGER)")
         self.c.execute("CREATE TABLE v1_users(id INTEGER PRIMARY KEY NOT NULL, identifier TEXT)")
         self.c.execute("CREATE TABLE v1_votes(id INTEGER PRIMARY KEY NOT NULL, joke INTEGER, user INTEGER, type TEXT)")
         self.conn.commit()
 
     def create_v1a(self):
+        app.logger.warning("creating new v1a database")
         self.c.execute("CREATE TABLE v1a_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT, user INTEGER)")
         self.c.execute("CREATE TABLE v1a_votes(id INTEGER PRIMARY KEY NOT NULL, joke INTEGER, user INTEGER, type TEXT)")
         self.c.execute("CREATE TABLE v1a_users(id INTEGER PRIMARY KEY NOT NULL, identifier TEXT, role TEXT DEFAULT 'guest', password TEXT DEFAULT '', salt TEXT DEFAULT '')")
         self.conn.commit()
 
     def migrate_v1to1a(self):
+        app.logger.warning("migrating database from v1 to v1a")
         self.c.execute("ALTER TABLE v1_jokes RENAME TO v1a_jokes")
         self.c.execute("ALTER TABLE v1_votes RENAME TO v1a_votes")
         self.c.execute("CREATE TABLE v1a_users(id INTEGER PRIMARY KEY, identifier TEXT, role TEXT DEFAULT 'guest', password TEXT DEFAULT '', salt TEXT DEFAULT '')")
@@ -65,6 +66,7 @@ class dbProxy(object):
         self.conn.commit()
 
     def migrate_v0to1(self):
+        app.logger.warning("migrating database from v0 to v1")
         self.create_v1()
 
         self.c.execute("INSERT INTO v1_users(identifier) VALUES ('anonymous')")
@@ -235,6 +237,7 @@ class dbProxy(object):
         return uid
 
     def rootUser(self, name):
+        app.logger.warning("converting %s to superuser", name)
         self.c.execute("UPDATE " + self.prefix + "_users SET role='super' WHERE identifier=?", (name,))
         self.conn.commit()
 
