@@ -144,10 +144,6 @@ class dbProxy(object):
         users = self.c.execute("SELECT id FROM " + self.prefix + "_users WHERE role='user'").fetchall()
         users = [u['id'] for u in users]
         for joke in jokes:
-            # skip jokes marked as deleted
-            if not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE type='delete' AND joke=?", (joke['id'],)).fetchone()['COUNT(*)'] == 0:
-                continue
-
             ret_joke = {
                 'id': joke['id']
             }
@@ -180,6 +176,16 @@ class dbProxy(object):
 
             ret_joke['score'] = score
             ret_joke['freshness'] = jokes[-1]['id'] - joke['id']
+
+            # skip other's jokes marked as deleted
+            if not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE type='delete' AND joke=?", (joke['id'],)).fetchone()['COUNT(*)'] == 0:
+                # deleted
+                if ret_joke['mine']:
+                    ret_joke['deleted'] = True
+                    ret_joke['score'] = ret_joke['freshness'] = -1000
+                else:
+                    continue
+
             ret_jokes.append(ret_joke)
 
         ret_jokes = sorted(ret_jokes, key=lambda j: (j['score']+1)/pow(j['freshness']+1, 2), reverse=True)

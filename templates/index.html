@@ -51,6 +51,7 @@
             {% for joke in jokes %}
             <li class="collection-item row valign-wrapper">
                 <div class="col s4 m2 valign">
+                    {% if not joke.deleted %}
                     <div>
                         <i class="material-icons">whatshot</i><span class="right">{{ joke.score }}</span>
                     </div>
@@ -76,8 +77,17 @@
                             <span class="right red-text">{{ joke.reports }}</span>
                         </button>
                     </form>
+                    {% else %}
+                    <form action="/undelete" method="post">
+                        <input type="hidden" name="id" value="{{ joke.id }}">
+                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                        <button class="btn-flat" type="submit" style="width: 100%;">
+                            <i class="material-icons">delete undo</i>
+                        </button>
+                    </form>
+                    {% endif %}
                 </div>
-                <div class="joke flow-text col s8 m10 {% if joke.reports>0 %}grey-text{% endif %}" style="line-height: 1.5">
+                <div class="joke flow-text col s8 m10 {% if joke.reports>0 or joke.deleted %}grey-text{% endif %}" style="line-height: 1.5">
                     {% if joke.mine %}
                     <form action="/edit" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
@@ -93,7 +103,7 @@
                     <div class="textfield noteditor">
                         {{ joke.html|safe }}
                     </div>
-                    {% if joke.mine %}
+                    {% if joke.mine and not joke.deleted %}
                     <form action="/delete" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <input type="hidden" name="redirpage" value="{{ currentpage }}">
