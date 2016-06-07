@@ -1,4 +1,5 @@
 config = {
     'secret_key': b'',
-    'debug': False
+    'debug': False,
+    'superuser': 'admin'
 }

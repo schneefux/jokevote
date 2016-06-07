@@ -21,10 +21,23 @@ import sqlite3
 
 
 class dbProxy(object):
-    def __init__(self, db):
+    def __init__(self, db, rootName):
         self.conn = sqlite3.connect(db)
         self.conn.row_factory = self.dict_factory
         self.c = self.conn.cursor()
+
+        if self.database_v() == '0':
+            print("migrating v0 to v1")
+            self.migrate_v0to1()
+        if self.database_v() == '1':
+            print("migrating v1 to v1a")
+            self.migrate_v1to1a()
+        if self.database_v() == '-1':
+            print("creating new v1a db")
+            self.create_v1a()
+
+        self.prefix = "v1a"
+        self.rootUser(rootName)
 
     def create_v0(self):
         self.c.execute("CREATE TABLE jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, upvotes INTEGER, downvotes INTEGER, reports INTEGER)")
@@ -114,18 +127,6 @@ class dbProxy(object):
                 return versions[ver]
         return '-1'
 
-    def create(self):
-        if self.database_v() == '0':
-            print("migrating v0 to v1")
-            self.migrate_v0to1()
-        if self.database_v() == '1':
-            print("migrating v1 to v1a")
-            self.migrate_v1to1a()
-        if self.database_v() == '-1':
-            print("creating new v1a db")
-            self.create_v1a()
-        self.prefix = "v1a"
-
     def close(self):
         self.conn.close()
 
@@ -145,6 +146,7 @@ class dbProxy(object):
         votewhere = "SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE "
         users = self.c.execute("SELECT id FROM " + self.prefix + "_users WHERE role='user'").fetchall()
         users = [u['id'] for u in users]
+        iamroot = not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_users WHERE id=? AND role='super'", (user,)).fetchone()['COUNT(*)'] == 0
         for joke in jokes:
             ret_joke = {
                 'id': joke['id']
@@ -154,7 +156,7 @@ class dbProxy(object):
             ret_joke['downvoted'] = not self.c.execute(votewhere + "joke=? AND user=? AND type='down'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
             ret_joke['reported'] = not self.c.execute(votewhere + "joke=? AND user=? AND type='report'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
             # allow deletion
-            ret_joke['mine'] = joke['user'] == user
+            ret_joke['mine'] = (joke['user'] == user or iamroot)
             # convert md->html if needed
             if joke['format'] == 'markdown':
                 ret_joke['html'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
@@ -219,7 +221,7 @@ class dbProxy(object):
                 uid = self.c.lastrowid
         else:
             if name != None:
-                user = self.c.execute("SELECT id FROM " + self.prefix + "_users WHERE role='user' AND identifier=?", (name,)).fetchone()
+                user = self.c.execute("SELECT id FROM " + self.prefix + "_users WHERE identifier=?", (name,)).fetchone()
                 if user:  # existing user
                     uid = int(user['id'])
                     if password != None:
@@ -231,6 +233,10 @@ class dbProxy(object):
                     uid = -2 # nonexistent
 
         return uid
+
+    def rootUser(self, name):
+        self.c.execute("UPDATE " + self.prefix + "_users SET role='super' WHERE identifier=?", (name,))
+        self.conn.commit()
 
     def addJoke(self, text, user):
         self.c.execute("INSERT INTO " + self.prefix + "_jokes(text, format, user) VALUES(?, 'markdown', ?)", (text, user))
@@ -256,22 +262,21 @@ class dbProxy(object):
         self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, 'report')", (objectId, user))
         self.conn.commit()
 
-    def getUserVotes(self, user):
-        votes = self.c.execute("SELECT joke FROM " + self.prefix + "_votes WHERE user=?", (user,)).fetchall()
-        votes = [v['joke'] for v in votes]
-        return votes
+    def hasVoted(self, joke, user):
+        return not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND user=?", (joke, user)).fetchone()['COUNT(*)'] == 0
 
-    def getUserJokes(self, user):
-        jokes = self.c.execute("SELECT id FROM " + self.prefix + "_jokes WHERE user=?", (user,)).fetchall()
-        jokes = [j['id'] for j in jokes]
-        return jokes
+    def mayModifyJoke(self, joke, user):
+        if self.c.execute("SELECT role FROM " + self.prefix + "_users WHERE id=?", (user,)).fetchone()['role'] == 'super':
+            return True
+        if int(self.c.execute("SELECT user FROM " + self.prefix + "_jokes WHERE id=?", (joke,)).fetchone()['user']) == user:
+            return True
+        return False
 
 
 def db():
     db = getattr(g, "_database", None)
     if db is None:
-        db = g._database = dbProxy("votes.db")
-        db.create()
+        db = g._database = dbProxy("votes.db", config['superuser'])
     return db
 
 app = Flask(__name__)
@@ -320,7 +325,7 @@ def edit():
     text = request.form['text']
     page = request.form['redirpage']
     objectId = int(request.form['id'])
-    if objectId not in db().getUserJokes(userid()):
+    if not db().mayModifyJoke(objectId, userid()):
         abort(403)
     db().updateJoke(text, objectId)
     return redirect('/page/' + page)
@@ -329,7 +334,7 @@ def edit():
 def upvote():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    if objectId in db().getUserVotes(userid()):
+    if db().hasVoted(objectId, userid()):
         db().unvoteJoke(objectId, userid())
     db().voteJoke(objectId, False, userid())
     return redirect('/page/' + page)
@@ -338,7 +343,7 @@ def upvote():
 def downvote():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    if objectId in db().getUserVotes(userid()):
+    if db().hasVoted(objectId, userid()):
         db().unvoteJoke(objectId, userid())
     db().voteJoke(objectId, True, userid())
     return redirect('/page/' + page)
@@ -347,7 +352,7 @@ def downvote():
 def report():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    if objectId in db().getUserVotes(userid()):
+    if db().hasVoted(objectId, userid()):
         db().unvoteJoke(objectId, userid())
     db().reportJoke(objectId, userid())
     return redirect('/page/' + page)
@@ -356,7 +361,7 @@ def report():
 def delete():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    if objectId not in db().getUserJokes(userid()):
+    if not db().mayModifyJoke(objectId, userid()):
         abort(403)
     db().removeJoke(objectId, userid())
     return redirect('/page/' + page)
@@ -365,7 +370,7 @@ def delete():
 def undelete():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    if objectId not in db().getUserJokes(userid()):
+    if not db().mayModifyJoke(objectId, userid()):
         abort(403)
     db().unvoteJoke(objectId, userid())
     return redirect('/page/' + page)
