@@ -12,7 +12,7 @@
     <script type="text/javascript" src="/static/smoothstate.min.js"></script>
     <script type="text/javascript" src="/static/materialize.min.js"></script>
     <div class="container" id="main">
-        <div class="row">
+        <header class="row">
             <h3>Lehrersprüche</h3>
             <div class="section">
                 <a class="btn-floating btn-large right" href="/export"><i class="material-icons">file_download</i></a>
@@ -38,107 +38,109 @@
                 </form>
                 {% endif %}
             </div>
-        </div>
-        {% with msgs = get_flashed_messages() %}
-            {% if msgs %}
-        <div>
-            {% for msg in msgs %}
-            <p>{{ msg }}</p>
-            {% endfor %}
-        </div>
-            {% endif %}
-        {% endwith %}
-        <ul class="collection">
-            {% for joke in jokes %}
-            <li class="collection-item row valign-wrapper">
-                <div class="col s4 m2 valign">
-                    {% if not joke.deleted %}
-                    <div>
-                        <i class="material-icons">whatshot</i><span class="right">{{ joke.score }}</span>
-                    </div>
-                    <form action="/upvote" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.upvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
-                            <i class="material-icons">thumb_up</i>
-                        </button>
-                    </form>
-                    <form action="/downvote" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.downvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
-                            <i class="material-icons">thumb_down</i>
-                        </button>
-                    </form>
-                    <form action="/report" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="col s12 btn-flat{% if joke.reported %} disabled{% endif %}" type="submit">
-                            <i class="material-icons left">report_problem</i>
-                            <span class="right red-text">{{ joke.reports }}</span>
-                        </button>
-                    </form>
-                    {% else %}
-                    <form action="/undelete" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="btn-flat" type="submit" style="width: 100%;">
-                            <i class="material-icons">delete undo</i>
-                        </button>
-                    </form>
-                    {% endif %}
-                </div>
-                <div class="joke flow-text col s8 m10 {% if joke.reports>0 or joke.deleted %}grey-text{% endif %}" style="line-height: 1.5">
-                    {% if joke.mine %}
-                    <form action="/edit" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button type="button" class="btn-floating right blue noteditor" onclick="openEditor(this)"><i class="material-icons">edit</i></button>
-                        <div class="input-field hide editor">
-                            <label for="text">Spruch bearbeiten</label>
-                            <textarea class="materialize-textarea" name="text">{{ joke.text }}</textarea>
-                            <button type="submit" class="btn-floating right blue"><i class="material-icons">done</i></button>
-                        </div>
-                    </form>
-                    {% endif %}
-                    <div class="textfield noteditor">
-                        {{ joke.html|safe }}
-                    </div>
-                    {% if joke.mine and not joke.deleted %}
-                    <form action="/delete" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="btn-floating right red noteditor" type="submit"><i class="material-icons">delete</i></button>
-                    </form>
-                    {% endif %}
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-        <div class="section center">
-            <ul class="pagination">
-                <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}"><i class="material-icons">chevron_left</i></a></li>
-                {% for page in pages %}
-                <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}">{{ loop.index }}</a></li>
+        </header>
+        <main>
+            {% with msgs = get_flashed_messages() %}
+                {% if msgs %}
+            <div>
+                {% for msg in msgs %}
+                <p>{{ msg }}</p>
                 {% endfor %}
-                <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}"><i class="material-icons">chevron_right</i></a></li>
+            </div>
+                {% endif %}
+            {% endwith %}
+            <ul class="collection">
+                {% for joke in jokes %}
+                <li class="collection-item row valign-wrapper">
+                    <div class="col s4 m2 valign">
+                        {% if not joke.deleted %}
+                        <div>
+                            <i class="material-icons">whatshot</i><span class="right">{{ joke.score }}</span>
+                        </div>
+                        <form action="/upvote" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                            <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.upvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
+                                <i class="material-icons">thumb_up</i>
+                            </button>
+                        </form>
+                        <form action="/downvote" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                            <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.downvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
+                                <i class="material-icons">thumb_down</i>
+                            </button>
+                        </form>
+                        <form action="/report" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                            <button class="col s12 btn-flat{% if joke.reported %} disabled{% endif %}" type="submit">
+                                <i class="material-icons left">report_problem</i>
+                                <span class="right red-text">{{ joke.reports }}</span>
+                            </button>
+                        </form>
+                        {% else %}
+                        <form action="/undelete" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                            <button class="btn-flat" type="submit" style="width: 100%;">
+                                <i class="material-icons">delete undo</i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    <div class="joke flow-text col s8 m10 {% if joke.reports>0 or joke.deleted %}grey-text{% endif %}" style="line-height: 1.5">
+                        {% if joke.mine %}
+                        <form action="/edit" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                            <button type="button" class="btn-floating right blue noteditor" onclick="openEditor(this)"><i class="material-icons">edit</i></button>
+                            <div class="input-field hide editor">
+                                <label for="text">Spruch bearbeiten</label>
+                                <textarea class="materialize-textarea" name="text">{{ joke.text }}</textarea>
+                                <button type="submit" class="btn-floating right blue"><i class="material-icons">done</i></button>
+                            </div>
+                        </form>
+                        {% endif %}
+                        <div class="textfield noteditor">
+                            {{ joke.html|safe }}
+                        </div>
+                        {% if joke.mine and not joke.deleted %}
+                        <form action="/delete" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                            <button class="btn-floating right red noteditor" type="submit"><i class="material-icons">delete</i></button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
             </ul>
-        </div>
-        <div class="divider"></div>
-        <div class="section">
-            <form action="/submit" method="post">
-                <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                <div class="row">
-                    <div class="col s12 m9 input-field">
-                        <label for="text">Neuen Spruch hinzufügen</label>
-                        <textarea class="materialize-textarea" name="text"></textarea>
+            <div class="section center">
+                <ul class="pagination">
+                    <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}"><i class="material-icons">chevron_left</i></a></li>
+                    {% for page in pages %}
+                    <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}">{{ loop.index }}</a></li>
+                    {% endfor %}
+                    <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}"><i class="material-icons">chevron_right</i></a></li>
+                </ul>
+            </div>
+            <div class="divider"></div>
+            <div class="section">
+                <form action="/submit" method="post">
+                    <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                    <div class="row">
+                        <div class="col s12 m9 input-field">
+                            <label for="text">Neuen Spruch hinzufügen</label>
+                            <textarea class="materialize-textarea" name="text"></textarea>
+                        </div>
+                        <div class="col s12 m3">
+                            <input type="submit" class="btn" value="hinzufügen">
+                        </div>
                     </div>
-                    <div class="col s12 m3">
-                        <input type="submit" class="btn" value="hinzufügen">
-                    </div>
-                </div>
-            </form>
-        </div>
+                </form>
+            </div>
+        </main>
     </div>
     <script type="text/javascript">
         $(document).ready(function() {
