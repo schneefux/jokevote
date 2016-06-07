@@ -319,8 +319,9 @@ def edit():
     text = request.form['text']
     page = request.form['redirpage']
     objectId = int(request.form['id'])
-    if objectId in db().getUserJokes(userid()):
-        db().updateJoke(text, objectId)
+    if objectId not in db().getUserJokes(userid()):
+        abort(403)
+    db().updateJoke(text, objectId)
     return redirect('/page/' + page)
 
 @app.route('/upvote', methods=['POST'])
@@ -354,16 +355,18 @@ def report():
 def delete():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    if objectId in db().getUserJokes(userid()):
-        db().removeJoke(objectId, userid())
+    if objectId not in db().getUserJokes(userid()):
+        abort(403)
+    db().removeJoke(objectId, userid())
     return redirect('/page/' + page)
 
 @app.route('/undelete', methods=['POST'])
 def undelete():
     objectId = int(request.form['id'])
     page = request.form['redirpage']
-    if objectId in db().getUserJokes(userid()):
-        db().unvoteJoke(objectId, userid())
+    if objectId not in db().getUserJokes(userid()):
+        abort(403)
+    db().unvoteJoke(objectId, userid())
     return redirect('/page/' + page)
 
 @app.route('/login', methods=['POST'])
