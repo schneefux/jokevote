@@ -2,6 +2,7 @@
 import markdown
 import hashlib
 import os
+import re
 from config import config
 from flask import (
     Flask,
@@ -158,9 +159,11 @@ class dbProxy(object):
             ret_joke['mine'] = joke['user'] == user
             # convert md->html if needed
             if joke['format'] == 'markdown':
-                ret_joke['text'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
-            if joke['format'] == 'html':
+                ret_joke['html'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
                 ret_joke['text'] = joke['text']
+            if joke['format'] == 'html':
+                ret_joke['html'] = joke['text']
+                ret_joke['text'] = re.sub('<[^<]+?>', '', joke['text'])
 
             ret_joke['reports'] = self.c.execute(votewhere + "joke=? AND type='report'", (joke['id'],)).fetchone()['COUNT(*)']
             # actual scoring
@@ -223,6 +226,10 @@ class dbProxy(object):
 
     def addJoke(self, text, user):
         self.c.execute("INSERT INTO " + self.prefix + "_jokes(text, format, user) VALUES(?, 'markdown', ?)", (text, user))
+        self.conn.commit()
+
+    def updateJoke(self, text, objectId):
+        self.c.execute("UPDATE " + self.prefix + "_jokes SET text=? WHERE id=?", (text, objectId))
         self.conn.commit()
 
     def removeJoke(self, objectId, user):
@@ -296,6 +303,15 @@ def submit():
     text = request.form['text']
     page = request.form['redirpage']
     db().addJoke(text, userid())
+    return redirect('/page/' + page)
+
+@app.route('/edit', methods=['POST'])
+def edit():
+    text = request.form['text']
+    page = request.form['redirpage']
+    objectId = int(request.form['id'])
+    if objectId in db().getUserJokes(userid()):
+        db().updateJoke(text, objectId)
     return redirect('/page/' + page)
 
 @app.route('/upvote', methods=['POST'])

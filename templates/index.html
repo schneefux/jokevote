@@ -76,16 +76,30 @@
                             <span class="right red-text">{{ joke.reports }}</span>
                         </button>
                     </form>
+                </div>
+                <div class="joke flow-text col s8 m10 {% if joke.reports>0 %}grey-text{% endif %}" style="line-height: 1.5">
+                    {% if joke.mine %}
+                    <form action="/edit" method="post">
+                        <input type="hidden" name="id" value="{{ joke.id }}">
+                        <input type="hidden" name="redirpage" value="{{ currentpage }}">
+                        <button type="button" class="btn-floating right blue noteditor" onclick="openEditor(this)"><i class="material-icons">edit</i></button>
+                        <div class="input-field hide editor">
+                            <label for="text">Spruch bearbeiten</label>
+                            <textarea class="materialize-textarea" name="text">{{ joke.text }}</textarea>
+                            <button type="submit" class="btn-floating right blue"><i class="material-icons">done</i></button>
+                        </div>
+                    </form>
+                    {% endif %}
+                    <div class="textfield noteditor">
+                        {{ joke.html|safe }}
+                    </div>
                     {% if joke.mine %}
                     <form action="/delete" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <input type="hidden" name="redirpage" value="{{ currentpage }}">
-                        <button class="deletebtn btn-flat" type="submit"><i class="material-icons">delete</i></button>
+                        <button class="btn-floating right red noteditor" type="submit"><i class="material-icons">delete</i></button>
                     </form>
                     {% endif %}
-                </div>
-                <div class="flow-text col s8 m10 {% if joke.reports>0 %}grey-text{% endif %}" style="line-height: 1.5">
-                    {{ joke.text|safe }}
                 </div>
             </li>
             {% endfor %}
@@ -119,6 +133,11 @@
         $(document).ready(function() {
             $('#main').smoothState({prefetch: true});
         });
+        function openEditor(me) {
+            var joke = $(me).closest('.joke');
+            $('.editor', joke).removeClass('hide');
+            $('.noteditor', joke).addClass('hide');
+        }
     </script>
 </body>
 </html>
