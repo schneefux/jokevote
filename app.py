@@ -236,7 +236,7 @@ class dbProxy(object):
         self.conn.commit()
 
     def updateJoke(self, text, objectId):
-        self.c.execute("UPDATE " + self.prefix + "_jokes SET text=? WHERE id=?", (text, objectId))
+        self.c.execute("UPDATE " + self.prefix + "_jokes SET text=?, format='markdown' WHERE id=?", (text, objectId))
         self.conn.commit()
 
     def removeJoke(self, objectId, user):
