@@ -7,6 +7,7 @@ from config import config
 from flask import (
     Flask,
     render_template,
+    make_response,
     Markup,
     request,
     g,
@@ -302,7 +303,9 @@ def page(num):
     if 'userlogin' in session:
         user['loggedin'] = True
         user['name'] = session['userlogin']
-    return render_template('index.html', currentpage=num, pages=[[]]*numpages, jokes=jokes, user=user)
+    r = make_response(render_template('index.html', currentpage=num, pages=[[]]*numpages, jokes=jokes, user=user))
+    r.headers.set('X-SmoothState-Location', request.path)
+    return r
 
 @app.route('/submit', methods=['POST'])
 def submit():

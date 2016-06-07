@@ -141,7 +141,7 @@
     </div>
     <script type="text/javascript">
         $(document).ready(function() {
-            $('#main').smoothState({prefetch: true});
+            $('#main').smoothState({prefetch: true, locationHeader: 'X-SmoothState-Location'});
         });
         function openEditor(me) {
             var joke = $(me).closest('.joke');
