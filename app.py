@@ -136,8 +136,8 @@ class dbProxy(object):
             d[col[0]] = row[idx]
         return d
 
-    def getPages(self, perpage):
-        l = len(self.getJokes())-1
+    def getPages(self, perpage, user):
+        l = len(self.getJokes(user=user))-1
         return int(l/perpage)+1
 
     def getJokes(self, perpage=None, page=None, user=None):
@@ -303,7 +303,7 @@ def userid():
 
 @app.route('/page/<int:num>')
 def page(num):
-    numpages = db().getPages(PERPAGE)
+    numpages = db().getPages(PERPAGE, userid())
     jokes = db().getJokes(PERPAGE, num, userid())
     user = {'loggedin': False}
     if 'userlogin' in session:
