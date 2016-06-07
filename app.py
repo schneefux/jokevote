@@ -230,7 +230,7 @@ class dbProxy(object):
                         if hashlib.sha512(password + auth['salt']).hexdigest() != auth['password']:
                             uid = -1  # auth failed
                 else:
-                    uid = -2 # nonexistent
+                    uid = -2  # nonexistent
 
         return uid
 
@@ -242,24 +242,24 @@ class dbProxy(object):
         self.c.execute("INSERT INTO " + self.prefix + "_jokes(text, format, user) VALUES(?, 'markdown', ?)", (text, user))
         self.conn.commit()
 
-    def updateJoke(self, text, objectId):
-        self.c.execute("UPDATE " + self.prefix + "_jokes SET text=?, format='markdown' WHERE id=?", (text, objectId))
+    def updateJoke(self, text, joke):
+        self.c.execute("UPDATE " + self.prefix + "_jokes SET text=?, format='markdown' WHERE id=?", (text, joke))
         self.conn.commit()
 
-    def removeJoke(self, objectId, user):
-        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, 'delete')", (objectId, user))
+    def removeJoke(self, joke, user):
+        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, 'delete')", (joke, user))
         self.conn.commit()
 
-    def voteJoke(self, objectId, down, user):
-        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, ?)", (objectId, user, 'down' if down else 'up'))
+    def voteJoke(self, joke, down, user):
+        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, ?)", (joke, user, 'down' if down else 'up'))
         self.conn.commit()
 
-    def unvoteJoke(self, objectId, user):
-        self.c.execute("DELETE FROM " + self.prefix + "_votes WHERE joke=? AND user=?", (objectId, user))
+    def unvoteJoke(self, joke, user):
+        self.c.execute("DELETE FROM " + self.prefix + "_votes WHERE joke=? AND user=?", (joke, user))
         self.conn.commit()
 
-    def reportJoke(self, objectId, user):
-        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, 'report')", (objectId, user))
+    def reportJoke(self, joke, user):
+        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, 'report')", (joke, user))
         self.conn.commit()
 
     def hasVoted(self, joke, user):
@@ -324,55 +324,55 @@ def submit():
 def edit():
     text = request.form['text']
     page = request.form['redirpage']
-    objectId = int(request.form['id'])
-    if not db().mayModifyJoke(objectId, userid()):
+    joke = int(request.form['id'])
+    if not db().mayModifyJoke(joke, userid()):
         abort(403)
-    db().updateJoke(text, objectId)
+    db().updateJoke(text, joke)
     return redirect('/page/' + page)
 
 @app.route('/upvote', methods=['POST'])
 def upvote():
-    objectId = int(request.form['id'])
+    joke = int(request.form['id'])
     page = request.form['redirpage']
-    if db().hasVoted(objectId, userid()):
-        db().unvoteJoke(objectId, userid())
-    db().voteJoke(objectId, False, userid())
+    if db().hasVoted(joke, userid()):
+        db().unvoteJoke(joke, userid())
+    db().voteJoke(joke, False, userid())
     return redirect('/page/' + page)
 
 @app.route('/downvote', methods=['POST'])
 def downvote():
-    objectId = int(request.form['id'])
+    joke = int(request.form['id'])
     page = request.form['redirpage']
-    if db().hasVoted(objectId, userid()):
-        db().unvoteJoke(objectId, userid())
-    db().voteJoke(objectId, True, userid())
+    if db().hasVoted(joke, userid()):
+        db().unvoteJoke(joke, userid())
+    db().voteJoke(joke, True, userid())
     return redirect('/page/' + page)
 
 @app.route('/report', methods=['POST'])
 def report():
-    objectId = int(request.form['id'])
+    joke = int(request.form['id'])
     page = request.form['redirpage']
-    if db().hasVoted(objectId, userid()):
-        db().unvoteJoke(objectId, userid())
-    db().reportJoke(objectId, userid())
+    if db().hasVoted(joke, userid()):
+        db().unvoteJoke(joke, userid())
+    db().reportJoke(joke, userid())
     return redirect('/page/' + page)
 
 @app.route('/delete', methods=['POST'])
 def delete():
-    objectId = int(request.form['id'])
+    joke = int(request.form['id'])
     page = request.form['redirpage']
-    if not db().mayModifyJoke(objectId, userid()):
+    if not db().mayModifyJoke(joke, userid()):
         abort(403)
-    db().removeJoke(objectId, userid())
+    db().removeJoke(joke, userid())
     return redirect('/page/' + page)
 
 @app.route('/undelete', methods=['POST'])
 def undelete():
-    objectId = int(request.form['id'])
+    joke = int(request.form['id'])
     page = request.form['redirpage']
-    if not db().mayModifyJoke(objectId, userid()):
+    if not db().mayModifyJoke(joke, userid()):
         abort(403)
-    db().unvoteJoke(objectId, userid())
+    db().unvoteJoke(joke, userid())
     return redirect('/page/' + page)
 
 @app.route('/login', methods=['POST'])
