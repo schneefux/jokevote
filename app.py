@@ -408,9 +408,14 @@ def logout():
     page = request.form['redirpage']
     return redirect('/page/' + page)
 
+# TODO use nginx for this
 @app.route('/static/<path:path>')
 def get_static(path):
     return send_from_directory('static', path)
+
+@app.route('/robots.txt')
+def robotstxt():
+    return send_from_directory('static', 'robots.txt')
 
 app.debug = config['debug']
 app.secret_key = config['secret_key']
