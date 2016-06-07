@@ -142,7 +142,10 @@ class dbProxy(object):
         l = len(self.getJokes(user=user))-1
         return int(l/perpage)+1
 
-    def getJokes(self, perpage=None, page=None, user=None):
+    def getJokes(self, perpage=None, page=None, user=None, sortby='rank'):
+        # perpage, page: only return subset for pagination
+        # user: return with user-specific attributes, also return deleted jokes
+        # sortby: rank - calculated by score and freshness, score - only score
         ret_jokes = []
         jokes = self.c.execute("SELECT * FROM " + self.prefix + "_jokes ORDER BY id ASC").fetchall()
         votewhere = "SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE "
@@ -194,7 +197,12 @@ class dbProxy(object):
 
             ret_jokes.append(ret_joke)
 
-        ret_jokes = sorted(ret_jokes, key=lambda j: (j['score']+1)/pow(j['freshness']+1, 2), reverse=True)
+        if sortby == 'rank':
+            sorter = lambda j: (j['score']+1)/pow(j['freshness']+1, 2)
+        if sortby == 'score':
+            sorter = lambda j: j['score']
+
+        ret_jokes = sorted(ret_jokes, key=sorter, reverse=True)
         if page != None and perpage != None:
             return ret_jokes[page*perpage:(page+1)*perpage]
         return ret_jokes
@@ -407,6 +415,14 @@ def logout():
     session['guestlogin'] = os.urandom(32).hex()
     page = request.form['redirpage']
     return redirect('/page/' + page)
+
+@app.route('/export')
+def export():
+    jokes = db().getJokes(sortby='score')
+    texts = [j['text'] for j in jokes]
+    r = make_response("\n\r\n\r".join(texts))
+    r.headers['Content-Type'] = 'text/plain; charset=utf-8';
+    return r
 
 # TODO use nginx for this
 @app.route('/static/<path:path>')
