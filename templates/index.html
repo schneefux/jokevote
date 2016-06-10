@@ -35,7 +35,7 @@
                 </form>
                 {% endif %}
                 <div class="col s2 m12 l2 right">
-                    <a class="btn-floating btn-large right" href="/export{% if query %}?{{ query }}{% endif %}"><i class="material-icons">file_download</i></a>
+                    <a id="export" target="_blank" class="btn-floating btn-large right" href="/export{% if query %}?{{ query }}{% endif %}"><i class="material-icons">file_download</i></a>
                 </div>
             </div>
         </header>
@@ -136,7 +136,11 @@
     </div>
     <script type="text/javascript">
         $(document).ready(function() {
-            $('#main').smoothState({prefetch: true, locationHeader: 'X-SmoothState-Location'});
+            $('#main').smoothState({
+                prefetch: true,
+                locationHeader: 'X-SmoothState-Location',
+                blacklist: '#export'
+            });
         });
         function openEditor(me) {
             var joke = $(me).closest('.joke');
