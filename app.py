@@ -327,64 +327,57 @@ def page(num):
 @app.route('/submit', methods=['POST'])
 def submit():
     text = request.form['text']
-    page = request.form['redirpage']
     db().addJoke(text, userid())
-    return redirect('/page/' + page)
+    return redirect(request.referrer)
 
 @app.route('/edit', methods=['POST'])
 def edit():
     text = request.form['text']
-    page = request.form['redirpage']
     joke = int(request.form['id'])
     if not db().mayModifyJoke(joke, userid()):
         abort(403)
     db().updateJoke(text, joke)
-    return redirect('/page/' + page)
+    return redirect(request.referrer)
 
 @app.route('/upvote', methods=['POST'])
 def upvote():
     joke = int(request.form['id'])
-    page = request.form['redirpage']
     if db().hasVoted(joke, userid()):
         db().unvoteJoke(joke, userid())
     db().voteJoke(joke, False, userid())
-    return redirect('/page/' + page)
+    return redirect(request.referrer)
 
 @app.route('/downvote', methods=['POST'])
 def downvote():
     joke = int(request.form['id'])
-    page = request.form['redirpage']
     if db().hasVoted(joke, userid()):
         db().unvoteJoke(joke, userid())
     db().voteJoke(joke, True, userid())
-    return redirect('/page/' + page)
+    return redirect(request.referrer)
 
 @app.route('/report', methods=['POST'])
 def report():
     joke = int(request.form['id'])
-    page = request.form['redirpage']
     if db().hasVoted(joke, userid()):
         db().unvoteJoke(joke, userid())
     db().reportJoke(joke, userid())
-    return redirect('/page/' + page)
+    return redirect(request.referrer)
 
 @app.route('/delete', methods=['POST'])
 def delete():
     joke = int(request.form['id'])
-    page = request.form['redirpage']
     if not db().mayModifyJoke(joke, userid()):
         abort(403)
     db().removeJoke(joke, userid())
-    return redirect('/page/' + page)
+    return redirect(request.referrer)
 
 @app.route('/undelete', methods=['POST'])
 def undelete():
     joke = int(request.form['id'])
-    page = request.form['redirpage']
     if not db().mayModifyJoke(joke, userid()):
         abort(403)
     db().unvoteJoke(joke, userid())
-    return redirect('/page/' + page)
+    return redirect(request.referrer)
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -404,8 +397,7 @@ def login():
     if res >= 0:
         session['userlogin'] = name
         flash('Erfolgreich eingeloggt.')
-    page = request.form['redirpage']
-    return redirect('/page/' + page)
+    return redirect(request.referrer)
 
 @app.route('/logout', methods=['POST'])
 def logout():
@@ -413,8 +405,7 @@ def logout():
         del session['userlogin']
         flash('Ausgeloggt.')
     session['guestlogin'] = os.urandom(32).hex()
-    page = request.form['redirpage']
-    return redirect('/page/' + page)
+    return redirect(request.referrer)
 
 @app.route('/export')
 def export():
