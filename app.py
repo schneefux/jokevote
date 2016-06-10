@@ -26,14 +26,14 @@ class dbProxy(object):
         self.c = self.conn.cursor()
 
         self.prefix = "v1b"
+        if self.database_v() == '-1':
+            self.create_v1b()
         if self.database_v() == '0':
             self.migrate_v0to1()
         if self.database_v() == '1':
             self.migrate_v1to1a()
         if self.database_v() == '1a':
             self.migrate_v1ato1b()
-        if self.database_v() == '-1':
-            self.create_v1a()
 
         self.rootUser(rootName)
 
