@@ -49,6 +49,12 @@
             </div>
                 {% endif %}
             {% endwith %}
+            {% if tag %}
+            <div class="chip">
+                {{ tag }}
+                <a href="/"><i class="material-icons">close</i></a>
+            </div>
+            {% endif %}
             <ul class="collection">
                 {% for joke in jokes[currentpage*perpage:(currentpage+1)*perpage] %}
                 <li class="collection-item row valign-wrapper">

@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-import markdown
 import hashlib
 import os
 import re
@@ -35,6 +34,8 @@ class dbProxy(object):
 
         self.prefix = "v1a"
         self.rootUser(rootName)
+
+        self.tagmark = "_"
 
     def create_v0(self):
         app.logger.warning("creating new v0 database")
@@ -138,8 +139,17 @@ class dbProxy(object):
             d[col[0]] = row[idx]
         return d
 
-    def getJokes(self, user=None, sortby='rank'):
+    def prettifyText(self, text):
+        html = re.sub('<[^<]+?>', '', text)
+        html = re.sub(r"/(\w+)/", '<em>\\1</em>', html)
+        html = re.sub(r"\*(\w+)\*", '<strong>\\1</strong>', html)
+        html = re.sub(r"#(\w+)", '<a href="/?filter=' + self.tagmark + '\\1">#\\1</a>', html)
+        html = html.replace("\n", "<br />")
+        return html
+
+    def getJokes(self, user=None, filter=None, sortby='rank'):
         # user: return with user-specific attributes, also return deleted jokes
+        # filter: return jokes including the specified word
         # sortby: rank - calculated by score and freshness, score - only score
         ret_jokes = []
         jokes = self.c.execute("SELECT * FROM " + self.prefix + "_jokes ORDER BY id ASC").fetchall()
@@ -157,13 +167,18 @@ class dbProxy(object):
             ret_joke['reported'] = not self.c.execute(votewhere + "joke=? AND user=? AND type='report'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
             # allow deletion
             ret_joke['mine'] = (joke['user'] == user or iamroot)
-            # convert md->html if needed
-            if joke['format'] == 'markdown':
-                ret_joke['html'] = Markup(markdown.markdown(joke['text'], extensions=['markdown.extensions.nl2br'], output_format="html5", safe_mode="remove"))  # TODO safe_mode deprecated
+
+            if joke['format'] == 'prettytext' or joke['format'] == 'markdown':
+                ret_joke['html'] = self.prettifyText(joke['text'])  # do not render markdown, deprecated
                 ret_joke['text'] = joke['text']
             if joke['format'] == 'html':
                 ret_joke['html'] = joke['text']
                 ret_joke['text'] = re.sub('<[^<]+?>', '', joke['text'])
+
+            if filter != None:  # simple search
+                filter = re.sub(r"^" + self.tagmark, "#", filter)
+                if filter.lower() not in ret_joke['text'].lower():
+                    continue
 
             ret_joke['reports'] = self.c.execute(votewhere + "joke=? AND type='report'", (joke['id'],)).fetchone()['COUNT(*)']
             # actual scoring
@@ -243,11 +258,11 @@ class dbProxy(object):
         self.conn.commit()
 
     def addJoke(self, text, user):
-        self.c.execute("INSERT INTO " + self.prefix + "_jokes(text, format, user) VALUES(?, 'markdown', ?)", (text, user))
+        self.c.execute("INSERT INTO " + self.prefix + "_jokes(text, format, user) VALUES(?, 'prettytext', ?)", (text, user))
         self.conn.commit()
 
     def updateJoke(self, text, joke):
-        self.c.execute("UPDATE " + self.prefix + "_jokes SET text=?, format='markdown' WHERE id=?", (text, joke))
+        self.c.execute("UPDATE " + self.prefix + "_jokes SET text=?, format='prettytext' WHERE id=?", (text, joke))
         self.conn.commit()
 
     def removeJoke(self, joke, user):
@@ -307,12 +322,15 @@ def userid():
 
 @app.route('/page/<int:num>')
 def page(num):
-    jokes = db().getJokes(userid())
+    filter = request.args.get('filter')
+    jokes = db().getJokes(user=userid(), filter=filter)
     user = {'loggedin': False}
     if 'userlogin' in session:
         user['loggedin'] = True
         user['name'] = session['userlogin']
-    r = make_response(render_template('index.html', currentpage=num, perpage=PERPAGE, jokes=jokes, user=user))
+    if filter:
+        filter = re.sub(r"^" + db().tagmark, "#", filter)  # TODO find a cleaner way
+    r = make_response(render_template('index.html', currentpage=num, tag=filter, perpage=PERPAGE, jokes=jokes, user=user))
     r.headers.set('X-SmoothState-Location', request.path)
     return r
 
@@ -401,7 +419,8 @@ def logout():
 
 @app.route('/export')
 def export():
-    jokes = db().getJokes(sortby='score')
+    filter = request.args.get('filter')
+    jokes = db().getJokes(filter=filter, sortby='score')
     texts = [j['text'] for j in jokes]
     r = make_response("\n\r\n\r".join(texts))
     r.headers['Content-Type'] = 'text/plain; charset=utf-8';
