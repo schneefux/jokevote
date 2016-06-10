@@ -112,7 +112,7 @@
             <div class="section center">
                 <ul class="pagination">
                     <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}"><i class="material-icons">chevron_left</i></a></li>
-                    {% for page in range(jokes|length//perpage+1) %}
+                    {% for page in range((jokes|length/perpage)|round(0, 'ceil')|int) %}
                     <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}">{{ loop.index }}</a></li>
                     {% endfor %}
                     <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}"><i class="material-icons">chevron_right</i></a></li>
