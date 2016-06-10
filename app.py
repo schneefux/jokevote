@@ -89,7 +89,7 @@ class dbProxy(object):
         self.conn.commit()
 
     def create_v1b(self):
-        create_v1a()
+        self.create_v1a()
 
     def migrate_v0to1(self):
         app.logger.warning("migrating database from v0 to v1")
