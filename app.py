@@ -39,6 +39,35 @@ class dbProxy(object):
 
         self.tagmark = "_"
 
+    def close(self):
+        self.conn.close()
+
+    def database_v(self):
+        versions = {
+            'jokes': '0',
+            'v1_jokes': '1',
+            'v1a_jokes': '1a',
+            'v1b_jokes': '1b'
+        }
+        for ver in versions:
+            if self.c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", (ver,)).fetchone()['COUNT(*)'] == 1:
+                return versions[ver]
+        return '-1'
+
+    def dict_factory(self, cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return d
+
+    def prettifyText(self, text):
+        html = re.sub('<[^<]+?>', '', text)
+        html = re.sub(r"/(\w+)/", '<em>\\1</em>', html)
+        html = re.sub(r"\*(\w+)\*", '<strong>\\1</strong>', html)
+        html = re.sub(r"#(\w+)", '<a href="/?filter=' + self.tagmark + '\\1">#\\1</a>', html)
+        html = html.replace("\n", "<br />")
+        return html
+
     def create_v0(self):
         app.logger.warning("creating new v0 database")
         self.c.execute("CREATE TABLE jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, upvotes INTEGER, downvotes INTEGER, reports INTEGER)")
@@ -61,24 +90,6 @@ class dbProxy(object):
 
     def create_v1b(self):
         create_v1a()
-
-    def migrate_v1ato1b(self):
-        app.logger.warning("migrating database from v1a to v1b")
-        self.c.execute("ALTER TABLE v1a_jokes RENAME TO v1b_jokes")
-        self.c.execute("ALTER TABLE v1a_votes RENAME TO v1b_votes")
-        self.c.execute("ALTER TABLE v1a_users RENAME TO v1b_users")
-        self.c.execute("UPDATE v1b_jokes SET format='prettytext' WHERE format='markdown'")
-        self.c.execute("UPDATE v1b_votes SET type='down' WHERE type='report'")
-        self.conn.commit()
-
-    def migrate_v1to1a(self):
-        app.logger.warning("migrating database from v1 to v1a")
-        self.c.execute("ALTER TABLE v1_jokes RENAME TO v1a_jokes")
-        self.c.execute("ALTER TABLE v1_votes RENAME TO v1a_votes")
-        self.c.execute("CREATE TABLE v1a_users(id INTEGER PRIMARY KEY, identifier TEXT, role TEXT DEFAULT 'guest', password TEXT DEFAULT '', salt TEXT DEFAULT '')")
-        self.c.execute("INSERT INTO v1a_users(id, identifier) SELECT id, identifier FROM v1_users")
-        self.c.execute("DROP TABLE v1_users")
-        self.conn.commit()
 
     def migrate_v0to1(self):
         app.logger.warning("migrating database from v0 to v1")
@@ -133,34 +144,23 @@ class dbProxy(object):
         # write
         self.conn.commit()
 
-    def database_v(self):
-        versions = {
-            'jokes': '0',
-            'v1_jokes': '1',
-            'v1a_jokes': '1a',
-            'v1b_jokes': '1b'
-        }
-        for ver in versions:
-            if self.c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", (ver,)).fetchone()['COUNT(*)'] == 1:
-                return versions[ver]
-        return '-1'
+    def migrate_v1to1a(self):
+        app.logger.warning("migrating database from v1 to v1a")
+        self.c.execute("ALTER TABLE v1_jokes RENAME TO v1a_jokes")
+        self.c.execute("ALTER TABLE v1_votes RENAME TO v1a_votes")
+        self.c.execute("CREATE TABLE v1a_users(id INTEGER PRIMARY KEY, identifier TEXT, role TEXT DEFAULT 'guest', password TEXT DEFAULT '', salt TEXT DEFAULT '')")
+        self.c.execute("INSERT INTO v1a_users(id, identifier) SELECT id, identifier FROM v1_users")
+        self.c.execute("DROP TABLE v1_users")
+        self.conn.commit()
 
-    def close(self):
-        self.conn.close()
-
-    def dict_factory(self, cursor, row):
-        d = {}
-        for idx, col in enumerate(cursor.description):
-            d[col[0]] = row[idx]
-        return d
-
-    def prettifyText(self, text):
-        html = re.sub('<[^<]+?>', '', text)
-        html = re.sub(r"/(\w+)/", '<em>\\1</em>', html)
-        html = re.sub(r"\*(\w+)\*", '<strong>\\1</strong>', html)
-        html = re.sub(r"#(\w+)", '<a href="/?filter=' + self.tagmark + '\\1">#\\1</a>', html)
-        html = html.replace("\n", "<br />")
-        return html
+    def migrate_v1ato1b(self):
+        app.logger.warning("migrating database from v1a to v1b")
+        self.c.execute("ALTER TABLE v1a_jokes RENAME TO v1b_jokes")
+        self.c.execute("ALTER TABLE v1a_votes RENAME TO v1b_votes")
+        self.c.execute("ALTER TABLE v1a_users RENAME TO v1b_users")
+        self.c.execute("UPDATE v1b_jokes SET format='prettytext' WHERE format='markdown'")
+        self.c.execute("UPDATE v1b_votes SET type='down' WHERE type='report'")
+        self.conn.commit()
 
     def getJokes(self, user=None, filter=None, sortby='rank'):
         # user: return with user-specific attributes, also return deleted jokes
@@ -314,10 +314,6 @@ def close_db(exception):
     if db is not None:
         db.close()
 
-@app.route('/')
-def root():
-    return page(0)
-
 def userid():
     if 'userlogin' in session:
         uid = db().getUser(name=session['userlogin'])
@@ -326,6 +322,10 @@ def userid():
     if not 'guestlogin' in session:
         session['guestlogin'] = os.urandom(32).hex()
     return db().getUser(cookie=session['guestlogin'])
+
+@app.route('/')
+def root():
+    return page(0)
 
 @app.route('/page/<int:num>')
 def page(num):
