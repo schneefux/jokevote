@@ -65,21 +65,14 @@
                         </div>
                         <form action="/upvote" method="post">
                             <input type="hidden" name="id" value="{{ joke.id }}">
-                            <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.upvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
+                            <button class="btn{% if joke.upvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
                                 <i class="material-icons">thumb_up</i>
                             </button>
                         </form>
                         <form action="/downvote" method="post">
                             <input type="hidden" name="id" value="{{ joke.id }}">
-                            <button class="btn{% if joke.reports>0 %}-flat{% endif %}{% if joke.downvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
+                            <button class="btn{% if joke.downvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
                                 <i class="material-icons">thumb_down</i>
-                            </button>
-                        </form>
-                        <form action="/report" method="post">
-                            <input type="hidden" name="id" value="{{ joke.id }}">
-                            <button class="col s12 btn-flat{% if joke.reported %} disabled{% endif %}" type="submit">
-                                <i class="material-icons left">report_problem</i>
-                                <span class="right red-text">{{ joke.reports }}</span>
                             </button>
                         </form>
                         {% else %}
@@ -91,7 +84,7 @@
                         </form>
                         {% endif %}
                     </div>
-                    <div class="joke flow-text col s8 m10 {% if joke.reports>0 or joke.deleted %}grey-text{% endif %}" style="line-height: 1.5">
+                    <div class="joke flow-text col s8 m10{% if joke.deleted %} grey-text{% endif %}" style="line-height: 1.5">
                         {% if joke.mine %}
                         <form action="/edit" method="post">
                             <input type="hidden" name="id" value="{{ joke.id }}">

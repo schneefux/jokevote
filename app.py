@@ -25,14 +25,16 @@ class dbProxy(object):
         self.conn.row_factory = self.dict_factory
         self.c = self.conn.cursor()
 
+        self.prefix = "v1b"
         if self.database_v() == '0':
             self.migrate_v0to1()
         if self.database_v() == '1':
             self.migrate_v1to1a()
+        if self.database_v() == '1a':
+            self.migrate_v1ato1b()
         if self.database_v() == '-1':
             self.create_v1a()
 
-        self.prefix = "v1a"
         self.rootUser(rootName)
 
         self.tagmark = "_"
@@ -51,10 +53,22 @@ class dbProxy(object):
         self.conn.commit()
 
     def create_v1a(self):
-        app.logger.warning("creating new v1a database")
-        self.c.execute("CREATE TABLE v1a_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT, user INTEGER)")
-        self.c.execute("CREATE TABLE v1a_votes(id INTEGER PRIMARY KEY NOT NULL, joke INTEGER, user INTEGER, type TEXT)")
-        self.c.execute("CREATE TABLE v1a_users(id INTEGER PRIMARY KEY NOT NULL, identifier TEXT, role TEXT DEFAULT 'guest', password TEXT DEFAULT '', salt TEXT DEFAULT '')")
+        app.logger.warning("creating new " + self.prefix + " database")
+        self.c.execute("CREATE TABLE " + self.prefix + "_jokes(id INTEGER PRIMARY KEY NOT NULL, text TEXT, format TEXT, user INTEGER)")
+        self.c.execute("CREATE TABLE " + self.prefix + "_votes(id INTEGER PRIMARY KEY NOT NULL, joke INTEGER, user INTEGER, type TEXT)")
+        self.c.execute("CREATE TABLE " + self.prefix + "_users(id INTEGER PRIMARY KEY NOT NULL, identifier TEXT, role TEXT DEFAULT 'guest', password TEXT DEFAULT '', salt TEXT DEFAULT '')")
+        self.conn.commit()
+
+    def create_v1b(self):
+        create_v1a()
+
+    def migrate_v1ato1b(self):
+        app.logger.warning("migrating database from v1a to v1b")
+        self.c.execute("ALTER TABLE v1a_jokes RENAME TO v1b_jokes")
+        self.c.execute("ALTER TABLE v1a_votes RENAME TO v1b_votes")
+        self.c.execute("ALTER TABLE v1a_users RENAME TO v1b_users")
+        self.c.execute("UPDATE v1b_jokes SET format='prettytext' WHERE format='markdown'")
+        self.c.execute("UPDATE v1b_votes SET type='down' WHERE type='report'")
         self.conn.commit()
 
     def migrate_v1to1a(self):
@@ -123,7 +137,8 @@ class dbProxy(object):
         versions = {
             'jokes': '0',
             'v1_jokes': '1',
-            'v1a_jokes': '1a'
+            'v1a_jokes': '1a',
+            'v1b_jokes': '1b'
         }
         for ver in versions:
             if self.c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", (ver,)).fetchone()['COUNT(*)'] == 1:
@@ -164,12 +179,11 @@ class dbProxy(object):
             # mark jokes the user has already interacted with
             ret_joke['upvoted'] = not self.c.execute(votewhere + "joke=? AND user=? AND type='up'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
             ret_joke['downvoted'] = not self.c.execute(votewhere + "joke=? AND user=? AND type='down'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
-            ret_joke['reported'] = not self.c.execute(votewhere + "joke=? AND user=? AND type='report'", (joke['id'], user)).fetchone()['COUNT(*)'] == 0
             # allow deletion
             ret_joke['mine'] = (joke['user'] == user or iamroot)
 
-            if joke['format'] == 'prettytext' or joke['format'] == 'markdown':
-                ret_joke['html'] = self.prettifyText(joke['text'])  # do not render markdown, deprecated
+            if joke['format'] == 'prettytext':
+                ret_joke['html'] = self.prettifyText(joke['text'])
                 ret_joke['text'] = joke['text']
             if joke['format'] == 'html':
                 ret_joke['html'] = joke['text']
@@ -180,18 +194,15 @@ class dbProxy(object):
                 if filter.lower() not in ret_joke['text'].lower():
                     continue
 
-            ret_joke['reports'] = self.c.execute(votewhere + "joke=? AND type='report'", (joke['id'],)).fetchone()['COUNT(*)']
             # actual scoring
             # TODO optimize queries
             score = 0
             score += self.c.execute(votewhere + "joke=? AND type='up'", (joke['id'],)).fetchone()['COUNT(*)']
             score -= self.c.execute(votewhere + "joke=? AND type='down'", (joke['id'],)).fetchone()['COUNT(*)']
-            score -= self.c.execute(votewhere + "joke=? AND type='report'", (joke['id'],)).fetchone()['COUNT(*)'] * 5
             for u in users:
                 # user's scores count 10 times more
                 score += self.c.execute(votewhere + "joke=? AND type='up' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 9
                 score -= self.c.execute(votewhere + "joke=? AND type='down' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 9
-                score -= self.c.execute(votewhere + "joke=? AND type='report' AND user=?", (joke['id'], u)).fetchone()['COUNT(*)'] * 45
 
             ret_joke['score'] = score
             ret_joke['freshness'] = jokes[-1]['id'] - joke['id']
@@ -277,10 +288,6 @@ class dbProxy(object):
         self.c.execute("DELETE FROM " + self.prefix + "_votes WHERE joke=? AND user=?", (joke, user))
         self.conn.commit()
 
-    def reportJoke(self, joke, user):
-        self.c.execute("INSERT INTO " + self.prefix + "_votes(joke, user, type) VALUES(?, ?, 'report')", (joke, user))
-        self.conn.commit()
-
     def hasVoted(self, joke, user):
         return not self.c.execute("SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE joke=? AND user=?", (joke, user)).fetchone()['COUNT(*)'] == 0
 
@@ -363,14 +370,6 @@ def downvote():
     if db().hasVoted(joke, userid()):
         db().unvoteJoke(joke, userid())
     db().voteJoke(joke, True, userid())
-    return redirect(request.referrer)
-
-@app.route('/report', methods=['POST'])
-def report():
-    joke = int(request.form['id'])
-    if db().hasVoted(joke, userid()):
-        db().unvoteJoke(joke, userid())
-    db().reportJoke(joke, userid())
     return redirect(request.referrer)
 
 @app.route('/delete', methods=['POST'])
