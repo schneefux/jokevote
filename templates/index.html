@@ -50,7 +50,7 @@
                 {% endif %}
             {% endwith %}
             <ul class="collection">
-                {% for joke in jokes %}
+                {% for joke in jokes[currentpage*perpage:(currentpage+1)*perpage] %}
                 <li class="collection-item row valign-wrapper">
                     <div class="col s4 m2 valign">
                         {% if not joke.deleted %}
@@ -113,7 +113,7 @@
             <div class="section center">
                 <ul class="pagination">
                     <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}"><i class="material-icons">chevron_left</i></a></li>
-                    {% for page in pages %}
+                    {% for page in range(jokes|length//perpage+1) %}
                     <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}">{{ loop.index }}</a></li>
                     {% endfor %}
                     <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}"><i class="material-icons">chevron_right</i></a></li>

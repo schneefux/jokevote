@@ -138,12 +138,7 @@ class dbProxy(object):
             d[col[0]] = row[idx]
         return d
 
-    def getPages(self, perpage, user):
-        l = len(self.getJokes(user=user))-1
-        return int(l/perpage)+1
-
-    def getJokes(self, perpage=None, page=None, user=None, sortby='rank'):
-        # perpage, page: only return subset for pagination
+    def getJokes(self, user=None, sortby='rank'):
         # user: return with user-specific attributes, also return deleted jokes
         # sortby: rank - calculated by score and freshness, score - only score
         ret_jokes = []
@@ -203,8 +198,6 @@ class dbProxy(object):
             sorter = lambda j: j['score']
 
         ret_jokes = sorted(ret_jokes, key=sorter, reverse=True)
-        if page != None and perpage != None:
-            return ret_jokes[page*perpage:(page+1)*perpage]
         return ret_jokes
 
     def addUser(self, name, password):
@@ -314,13 +307,12 @@ def userid():
 
 @app.route('/page/<int:num>')
 def page(num):
-    numpages = db().getPages(PERPAGE, userid())
-    jokes = db().getJokes(PERPAGE, num, userid())
+    jokes = db().getJokes(userid())
     user = {'loggedin': False}
     if 'userlogin' in session:
         user['loggedin'] = True
         user['name'] = session['userlogin']
-    r = make_response(render_template('index.html', currentpage=num, pages=[[]]*numpages, jokes=jokes, user=user))
+    r = make_response(render_template('index.html', currentpage=num, perpage=PERPAGE, jokes=jokes, user=user))
     r.headers.set('X-SmoothState-Location', request.path)
     return r
 
