@@ -15,7 +15,6 @@
         <header class="row">
             <h3>Lehrersprüche</h3>
             <div class="section">
-                <a class="btn-floating btn-large right" href="/export"><i class="material-icons">file_download</i></a>
                 {% if user.loggedin %}
                 <form action="/logout" method="post">
                     <button class="btn" type="submit">Logout ({{ user.name }})</button>
@@ -35,6 +34,9 @@
                     </div>
                 </form>
                 {% endif %}
+                <div class="col s2 m12 l2 right">
+                    <a class="btn-floating btn-large right" href="/export"><i class="material-icons">file_download</i></a>
+                </div>
             </div>
         </header>
         <main>
