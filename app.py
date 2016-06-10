@@ -412,7 +412,6 @@ def db():
     return database
 
 app = Flask(__name__)
-PERPAGE = 10
 
 
 @app.teardown_appcontext
@@ -440,6 +439,7 @@ def root():
 @app.route('/page/<int:num>')
 def page(num):
     search = request.args.get('filter')
+    perpage = abs(int(request.args.get('perpage') or 10))
     jokes = db().get_jokes(user=userid(), search=search)
     user = {'loggedin': False}
     if 'userlogin' in session:
@@ -454,7 +454,7 @@ def page(num):
             currentpage=num,
             query=str(request.query_string, 'utf-8'),
             tag=search,
-            perpage=PERPAGE,
+            perpage=perpage,
             jokes=jokes,
             user=user))
     resp.headers.set('X-SmoothState-Location', request.path)
