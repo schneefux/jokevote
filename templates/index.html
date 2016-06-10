@@ -61,7 +61,7 @@
                     <div class="col s4 m2 valign">
                         {% if not joke.deleted %}
                         <div>
-                            <i class="material-icons">whatshot</i><span class="right">{{ joke.score }}</span>
+                            <i class="material-icons">whatshot</i> <span class="right">{{ joke.score }} Punkte</span>
                         </div>
                         <form action="/upvote" method="post">
                             <input type="hidden" name="id" value="{{ joke.id }}">
