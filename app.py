@@ -452,6 +452,7 @@ def page(num):
         render_template(
             'index.html',
             currentpage=num,
+            query=str(request.query_string, 'utf-8'),
             tag=search,
             perpage=PERPAGE,
             jokes=jokes,

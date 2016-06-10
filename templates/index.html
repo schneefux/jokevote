@@ -35,7 +35,7 @@
                 </form>
                 {% endif %}
                 <div class="col s2 m12 l2 right">
-                    <a class="btn-floating btn-large right" href="/export"><i class="material-icons">file_download</i></a>
+                    <a class="btn-floating btn-large right" href="/export{% if query %}?{{ query }}{% endif %}"><i class="material-icons">file_download</i></a>
                 </div>
             </div>
         </header>
@@ -111,11 +111,11 @@
             </ul>
             <div class="section center">
                 <ul class="pagination">
-                    <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}"><i class="material-icons">chevron_left</i></a></li>
+                    <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}{% if query %}?{{ query }}{% endif %}"><i class="material-icons">chevron_left</i></a></li>
                     {% for page in range((jokes|length/perpage)|round(0, 'ceil')|int) %}
-                    <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}">{{ loop.index }}</a></li>
+                    <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}{% if query %}?{{ query }}{% endif %}">{{ loop.index }}</a></li>
                     {% endfor %}
-                    <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}"><i class="material-icons">chevron_right</i></a></li>
+                    <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}{% if query %}?{{ query }}{% endif %}"><i class="material-icons">chevron_right</i></a></li>
                 </ul>
             </div>
             <div class="divider"></div>
