@@ -34,6 +34,15 @@
                     </div>
                 </form>
                 {% endif %}
+                <form>
+                    <div class="col s9 input-field">
+                        <label for="search">Stichworte</label>
+                        <input type="text" name="filter">
+                    </div>
+                    <div class="col s3">
+                        <button class="btn" type="submit">Suchen</button>
+                    </div>
+                </form>
                 <div class="col s2 m12 l2 right">
                     <a id="export" target="_blank" class="btn-floating btn-large right" href="/export{% if query %}?{{ query }}{% endif %}"><i class="material-icons">file_download</i></a>
                 </div>
@@ -49,11 +58,13 @@
             </div>
                 {% endif %}
             {% endwith %}
-            {% if tag %}
+            {% if tags %}
+                {% for tag in tags %}
             <div class="chip">
                 {{ tag }}
-                <a href="/"><i class="material-icons">close</i></a>
+                <a href="/?filter={{ tags|reject('sameas', tag)|join('+') }}"><i class="material-icons">close</i></a>
             </div>
+                {% endfor %}
             {% endif %}
             <ul class="collection">
                 {% for joke in jokes[currentpage*perpage:(currentpage+1)*perpage] %}
@@ -109,6 +120,7 @@
                 </li>
                 {% endfor %}
             </ul>
+            {% if jokes|length > 0 %}
             <div class="section center">
                 <ul class="pagination">
                     <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}{% if query %}?{{ query }}{% endif %}"><i class="material-icons">chevron_left</i></a></li>
@@ -119,6 +131,7 @@
                 </ul>
             </div>
             <div class="divider"></div>
+            {% endif %}
             <div class="section">
                 <form action="/submit" method="post">
                     <div class="row">

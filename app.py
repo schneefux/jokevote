@@ -21,6 +21,7 @@ from config import config
 
 class Markup(object):
     tagmark = "_"
+    spacemark = " "
 
     def prettify_text(self, text):
         html = re.sub('<[^<]+?>', '', text)
@@ -244,7 +245,7 @@ class DBProxy(object):
 
     def get_jokes(self, user=None, search=None, sortby='rank'):
         # user: return with user-specific attributes, also return deleted jokes
-        # search: return jokes including the specified word
+        # search: return jokes including all the specified words
         # sortby: rank - calculated by score and freshness, score - only score
         ret_jokes = []
         jokes = self.c.execute("SELECT * FROM " + self.prefix +
@@ -275,8 +276,12 @@ class DBProxy(object):
                     joke['text'])
 
             if search is not None:  # simple search
-                search = re.sub(r"^" + Markup.tagmark, "#", search)
-                if search.lower() not in ret_joke['text'].lower():
+                match = True
+                for word in search:
+                    if word.lower() not in ret_joke['text'].lower():
+                        match = False
+                        break
+                if not match:
                     continue
 
             ret_joke['score'] = self.score(joke['id'])
@@ -439,21 +444,22 @@ def root():
 @app.route('/page/<int:num>')
 def page(num):
     search = request.args.get('filter')
+    if search:
+        # TODO find a cleaner way
+        search = re.sub(r"^" + Markup.tagmark, "#", search)
+        search = search.split(Markup.spacemark)
     perpage = abs(int(request.args.get('perpage') or 10))
     jokes = db().get_jokes(user=userid(), search=search)
     user = {'loggedin': False}
     if 'userlogin' in session:
         user['loggedin'] = True
         user['name'] = session['userlogin']
-    if search:
-        # TODO find a cleaner way
-        search = re.sub(r"^" + Markup.tagmark, "#", search)
     resp = make_response(
         render_template(
             'index.html',
             currentpage=num,
             query=str(request.query_string, 'utf-8'),
-            tag=search,
+            tags=search,
             perpage=perpage,
             jokes=jokes,
             user=user))
