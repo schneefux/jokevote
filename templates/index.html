@@ -28,20 +28,19 @@
                             Sortierung<i class="material-icons right">arrow_drop_down</i>
                         </a>
                     </li>
-                    <li>
+                    <li class="hide-on-small-only">
                         <a id="export" target="_blank" href="/export?filter={{ request.args.get("filter") or "" }}&sort={{ request.args.get("sort") or "" }}">
                             <i class="material-icons">file_download</i>
                         </a>
                     </li>
                 </ul>
-                <form id="searchform" style="margin-left: 17em; margin-right: 24em;"><!-- TODO get rid of these magic margins -->
+                <form class="hide-on-small-only" id="searchform" style="margin-left: 17em; margin-right: 24em;"><!-- TODO get rid of these magic margins -->
                     <div class="input-field">
                         <label for="filter"><i class="material-icons">search</i></label>
                         <input type="search" name="filter" required>
                         <i class="material-icons">close</i>
                     </div>
                 </form>
-                <a onclick="$('#searchform').removeClass('hide');"><i class="material-icons">search</i></a>
             </nav>
         </div>
         <ul id="sort-dropdown" class="dropdown-content">
