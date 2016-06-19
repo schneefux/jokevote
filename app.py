@@ -302,10 +302,13 @@ class DBProxy(object):
             ret_jokes.append(ret_joke)
 
         def sorter(j):
-            if sortby == 'rank':
-                return (j['score']+1)/pow(j['freshness']+1, 2)
+            if sortby == 'unread':
+                return -j['freshness'] if j['upvoted'] or j['downvoted'] else j['freshness']
+            if sortby == 'age':
+                return 1-j['freshness']
             if sortby == 'score':
                 return j['score']
+            return (j['score']+1)/pow(j['freshness']+1, 2)  # 'rank' or invalid
 
         ret_jokes = sorted(ret_jokes, key=sorter, reverse=True)
         return ret_jokes
@@ -444,12 +447,13 @@ def root():
 @app.route('/page/<int:num>')
 def page(num):
     search = request.args.get('filter')
+    sortmethod = str(request.args.get('sort')) or 'rank'
     if search:
         # TODO find a cleaner way
         search = re.sub(r"^" + Markup.tagmark, "#", search)
         search = search.split(Markup.spacemark)
     perpage = abs(int(request.args.get('perpage') or 10))
-    jokes = db().get_jokes(user=userid(), search=search)
+    jokes = db().get_jokes(user=userid(), search=search, sortby=sortmethod)
     user = {'loggedin': False}
     if 'userlogin' in session:
         user['loggedin'] = True
@@ -459,6 +463,7 @@ def page(num):
             'index.html',
             currentpage=num,
             query=str(request.query_string, 'utf-8'),
+            selected_sort=sortmethod,
             tags=search,
             perpage=perpage,
             jokes=jokes,

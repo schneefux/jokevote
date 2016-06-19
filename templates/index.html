@@ -34,17 +34,34 @@
                     </div>
                 </form>
                 {% endif %}
-                <form>
-                    <div class="col s9 input-field">
-                        <label for="search">Stichworte</label>
-                        <input type="text" name="filter">
+                <div class="col s12">
+                    <form>
+                        <div class="col s9 input-field">
+                            <label for="search">Stichworte</label>
+                            <input type="text" name="filter">
+                        </div>
+                        <div class="col s3">
+                            <button class="btn" type="submit">Suchen</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="right">
+                    <div class="col offset-s5 s5">
+                        <form>
+                            <div class="input-field">
+                                <select name="sort" onchange="this.form.submit();">
+                                    {% for meth in [["rank", "Angesagt"], ["score", "Punkte"], ["age", "Alter"], ["unread", "Ungelesen"]] %}
+                                    <option value="{{ meth[0] }}"{% if selected_sort == meth[0] %} selected{% endif %}>{{ meth[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                                <label>Sortierung</label>
+                            </div>
+                            <noscript><input type="submit" value="Anzeigen"></noscript>
+                        </form>
                     </div>
-                    <div class="col s3">
-                        <button class="btn" type="submit">Suchen</button>
+                    <div class="col s2">
+                        <a id="export" target="_blank" class="btn-floating btn-large right" href="/export{% if query %}?{{ query }}{% endif %}"><i class="material-icons">file_download</i></a>
                     </div>
-                </form>
-                <div class="col s2 m12 l2 right">
-                    <a id="export" target="_blank" class="btn-floating btn-large right" href="/export{% if query %}?{{ query }}{% endif %}"><i class="material-icons">file_download</i></a>
                 </div>
             </div>
         </header>
@@ -148,11 +165,17 @@
         </main>
     </div>
     <script type="text/javascript">
+        function materialjs() {
+            $('select').material_select();
+        }
+
         $(document).ready(function() {
+            materialjs();
             $('#main').smoothState({
                 prefetch: true,
                 locationHeader: 'X-SmoothState-Location',
-                blacklist: '#export'
+                blacklist: '#export',
+                onAfter: materialjs
             });
         });
         function openEditor(me) {
