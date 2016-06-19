@@ -4,6 +4,7 @@ import sqlite3
 import hashlib
 import os
 import re
+import datetime
 from flask import (
     Flask,
     render_template,
@@ -47,20 +48,23 @@ class DBSchemaHandler(object):
         self.prefix = prefix
 
         if self.database_v() == '-1':
-            self.create_v1b()
+            self.create_v1c()
         if self.database_v() == '0':
             self.migrate_v0to1()
         if self.database_v() == '1':
             self.migrate_v1to1a()
         if self.database_v() == '1a':
             self.migrate_v1ato1b()
+        if self.database_v() == '1b':
+            self.migrate_v1bto1c()
 
     def database_v(self):
         versions = {
             'jokes': '0',
             'v1_jokes': '1',
             'v1a_jokes': '1a',
-            'v1b_jokes': '1b'
+            'v1b_jokes': '1b',
+            'v1c_jokes': '1c'
         }
         for ver in versions:
             if self.c.execute("SELECT COUNT(*) FROM sqlite_master " +
@@ -109,6 +113,21 @@ class DBSchemaHandler(object):
 
     def create_v1b(self):
         self.create_v1a()
+
+    def create_v1c(self):
+        app.logger.warning("creating new " + self.prefix + " database")
+        self.c.execute("CREATE TABLE " + self.prefix + "_jokes(" +
+                       "id INTEGER PRIMARY KEY NOT NULL, " +
+                       "text TEXT, format TEXT, user INTEGER, " +
+                       "created TIMESTAMP)")
+        self.c.execute("CREATE TABLE " + self.prefix + "_votes(" +
+                       "id INTEGER PRIMARY KEY NOT NULL, " +
+                       "joke INTEGER, user INTEGER, type TEXT)")
+        self.c.execute("CREATE TABLE " + self.prefix + "_users(" +
+                       "id INTEGER PRIMARY KEY NOT NULL, " +
+                       "identifier TEXT, role TEXT DEFAULT 'guest', " +
+                       "password TEXT DEFAULT '', salt TEXT DEFAULT '')")
+        self.conn.commit()
 
     def migrate_v0to1(self):  # pylint: disable=too-many-locals
         app.logger.warning("migrating database from v0 to v1")
@@ -199,6 +218,55 @@ class DBSchemaHandler(object):
         self.c.execute("UPDATE v1b_votes SET type='down' WHERE type='report'")
         self.conn.commit()
 
+    def migrate_v1bto1c(self):
+        app.logger.warning("migrating database from v1b to v1c")
+        app.logger.warning(
+            "IMPORTANT! All usernames will be converted to lowercase." +
+            "In case of duplicates, the oldest will be kept.")
+        self.c.execute("CREATE TABLE v1c_jokes(" +
+                       "id INTEGER PRIMARY KEY NOT NULL, " +
+                       "text TEXT, format TEXT, user INTEGER, " +
+                       "created TIMESTAMP)")
+        self.c.execute("ALTER TABLE v1b_votes RENAME TO v1c_votes")
+        self.c.execute("ALTER TABLE v1b_users RENAME TO v1c_users")
+        # lowercase all usernames, throw away the most recent duplicate
+        users = self.c.execute("SELECT id, identifier FROM v1c_users " +
+                               "ORDER BY id").fetchall()
+        dupes = []
+        for cnt, user in enumerate(users):
+            for ocnt, other in enumerate(users[cnt+1:]):
+                if user["identifier"].lower() == other["identifier"].lower():
+                    app.logger.warning("deleting duplicate user " +
+                                       other["identifier"])
+                    dupes.append((other["id"],))
+                    del users[cnt+ocnt]
+
+        self.c.executemany("UPDATE v1c_users SET " +
+                           "role='guest', " +
+                           "identifier=identifier||CAST(id AS TEXT), " +
+                           "password='', salt='' WHERE id=?",
+                           dupes)
+        self.c.execute("UPDATE v1c_users SET " +
+                       "identifier=LOWER(identifier)")
+
+        # add a (fake) date
+        jokes = self.c.execute("SELECT id, text, format, user " +
+                               "FROM v1b_jokes").fetchall()
+        newest_id = max([j['id'] for j in jokes])
+        now = datetime.datetime.now()
+        for joke in jokes:
+            self.c.execute("INSERT INTO " +
+                           "v1c_jokes(id, text, format, user, created) " +
+                           "VALUES(?, ?, ?, ?, ?)",
+                           (joke['id'],
+                            joke['text'],
+                            joke['format'],
+                            joke['user'],
+                            now-datetime.timedelta(
+                                days=(newest_id-joke['id']))))
+        self.c.execute("DROP TABLE v1b_jokes")
+        self.conn.commit()
+
 
 class DBProxy(object):
     def __init__(self, database, rootName):
@@ -208,11 +276,12 @@ class DBProxy(object):
                 dic[col[0]] = row[idx]
             return dic
 
-        self.conn = sqlite3.connect(database)
+        self.conn = sqlite3.connect(database,
+                                    detect_types=sqlite3.PARSE_DECLTYPES)
         self.conn.row_factory = dict_factory
         self.c = self.conn.cursor()
 
-        self.prefix = "v1b"
+        self.prefix = "v1c"
         DBSchemaHandler(self.conn, self.c, self.prefix)
 
         self.root_user(rootName)
@@ -246,7 +315,11 @@ class DBProxy(object):
     def get_jokes(self, user=None, search=None, sortby='rank'):
         # user: return with user-specific attributes, also return deleted jokes
         # search: return jokes including all the specified words
-        # sortby: rank - calculated by score and freshness, score - only score
+        # sortby:
+        #   rank - calculated by score and freshness,
+        #   score - only score
+        #   unread - without interaction first, then freshness
+        #   age - freshness
         ret_jokes = []
         jokes = self.c.execute("SELECT * FROM " + self.prefix +
                                "_jokes ORDER BY id ASC").fetchall()
@@ -254,6 +327,7 @@ class DBProxy(object):
         iamroot = not self.c.execute("SELECT COUNT(*) FROM " + self.prefix +
                                      "_users WHERE id=? AND role='super'",
                                      (user,)).fetchone()['COUNT(*)'] == 0
+        now = datetime.datetime.now()
         for joke in jokes:
             ret_joke = {
                 'id': joke['id']
@@ -285,8 +359,7 @@ class DBProxy(object):
                     continue
 
             ret_joke['score'] = self.score(joke['id'])
-            # TODO maybe do something based on dates
-            ret_joke['freshness'] = jokes[-1]['id'] - joke['id']
+            ret_joke['freshness'] = (now - joke['created']).days
 
             # skip other's jokes marked as deleted
             if not self.c.execute("SELECT COUNT(*) FROM " + self.prefix +
@@ -303,7 +376,9 @@ class DBProxy(object):
 
         def sorter(j):
             if sortby == 'unread':
-                return -j['freshness'] if j['upvoted'] or j['downvoted'] else j['freshness']
+                return -j['freshness'] \
+                    if j['upvoted'] or j['downvoted'] \
+                    else j['freshness']
             if sortby == 'age':
                 return 1-j['freshness']
             if sortby == 'score':
@@ -334,7 +409,7 @@ class DBProxy(object):
                                   "_users WHERE role='guest' AND identifier=?",
                                   (cookie,)).fetchone()
             if user:  # existing guest
-                uid = int(user['id'])
+                uid = user['id']
             else:  # create guest
                 self.c.execute("INSERT INTO " + self.prefix +
                                "_users(identifier) VALUES(?)",
@@ -347,7 +422,7 @@ class DBProxy(object):
                                       "_users WHERE identifier=?",
                                       (name,)).fetchone()
                 if user:  # existing user
-                    uid = int(user['id'])
+                    uid = user['id']
                     if password is not None:
                         password = password.encode('utf-8')
                         auth = self.c.execute(
@@ -369,8 +444,10 @@ class DBProxy(object):
 
     def add_joke(self, text, user):
         self.c.execute(
-            "INSERT INTO " + self.prefix + "_jokes(text, format, user) " +
-            "VALUES(?, 'prettytext', ?)", (text, user))
+            "INSERT INTO " + self.prefix + "_jokes" +
+            "(text, format, user, created) " +
+            "VALUES(?, 'prettytext', ?, ?)",
+            (text, user, datetime.datetime.now()))
         self.conn.commit()
 
     def update_joke(self, text, joke):
@@ -406,9 +483,9 @@ class DBProxy(object):
                           "_users WHERE id=?",
                           (user,)).fetchone()['role'] == 'super':
             return True
-        if int(self.c.execute("SELECT user FROM " + self.prefix +
-                              "_jokes WHERE id=?",
-                              (joke,)).fetchone()['user']) == user:
+        if self.c.execute("SELECT user FROM " + self.prefix +
+                          "_jokes WHERE id=?",
+                          (joke,)).fetchone()['user'] == user:
             return True
         return False
 
@@ -416,7 +493,8 @@ class DBProxy(object):
 def db():
     database = getattr(g, "_database", None)
     if database is None:
-        database = g._database = DBProxy("votes.db", config['superuser'])
+        database = g._database = DBProxy("votes.db",
+                                         config['superuser'].lower())
     return database
 
 app = Flask(__name__)
@@ -431,7 +509,7 @@ def close_db(exception):  # pylint: disable=unused-argument
 
 def userid():
     if 'userlogin' in session:
-        uid = db().get_user(name=session['userlogin'])
+        uid = db().get_user(name=session['userlogin'].lower())
         if uid != -2:
             return uid
     if 'guestlogin' not in session:
@@ -529,7 +607,7 @@ def undelete():
 def login():
     if 'guestlogin' not in session:
         session['guestlogin'] = os.urandom(32).hex()
-    name = request.form['user']
+    name = request.form['user'].lower()
     passw = request.form['password']
     if db().add_user(name, passw) >= 0:
         flash('Erfolgreich registriert.')
@@ -564,7 +642,6 @@ def export():
     return res
 
 
-# TODO use nginx for this
 @app.route('/static/<path:path>')
 def get_static(path):
     return send_from_directory('static', path)
