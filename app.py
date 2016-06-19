@@ -545,7 +545,7 @@ def login():
     return redirect(request.referrer)
 
 
-@app.route('/logout', methods=['POST'])
+@app.route('/logout', methods=['GET', 'POST'])
 def logout():
     if 'userlogin' in session:
         del session['userlogin']
