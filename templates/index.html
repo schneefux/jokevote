@@ -1,3 +1,4 @@
+{% macro query(search, sort) %}?filter={{ search if search is defined else request.args.get("filter") or "" }}&sort={{ sort if sort is defined else request.args.get("sort") or "" }}{% endmacro %}
 <!doctype html>
 <html lang="de">
 <head>
@@ -29,7 +30,7 @@
                         </a>
                     </li>
                     <li class="hide-on-small-only">
-                        <a id="export" target="_blank" href="/export?filter={{ request.args.get("filter") or "" }}&sort={{ request.args.get("sort") or "" }}">
+                        <a id="export" target="_blank" href="/export{{ query() }}">
                             <i class="material-icons">file_download</i>
                         </a>
                     </li>
@@ -45,7 +46,7 @@
         </div>
         <ul id="sort-dropdown" class="dropdown-content">
             {% for meth in [["rank", "Angesagt"], ["score", "Punkte"], ["age", "Alter"], ["unread", "Ungelesen"]] %}
-            <li><a href="/?filter={{ request.args.get("filter") or "" }}&sort={{ meth[0] }}">{{ meth[1] }}</a></li>
+            <li><a href="/{{ query(sort=meth[0]) }}">{{ meth[1] }}</a></li>
             {% endfor %}
         </ul>
         <form id="modal-login" class="modal row" action="/login" method="post">
@@ -82,11 +83,12 @@
             {% for tag in tags %}
             <div class="chip">
                 {{ tag }}
-                <a href="/?filter={{ tags|reject('sameas', tag)|join('+') }}"><i class="material-icons">close</i></a>
+                <a href="/{{ query(search=tags|reject('sameas', tag)|join('+')) }}"><i class="material-icons">close</i></a>
             </div>
             {% endfor %}
         </div>
         {% endif %}
+        {% if jokes|length > 0 %}
         <ul class="collection">
             {% for joke in jokes[currentpage*perpage:(currentpage+1)*perpage] %}
             <li class="collection-item row valign-wrapper">
@@ -95,20 +97,20 @@
                     <div>
                         <i class="material-icons">whatshot</i> <span class="right">{{ joke.score }} Punkte</span>
                     </div>
-                    <form action="/upvote" method="post">
+                    <form action="/upvote{{ query() }}" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <button class="btn{% if joke.upvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
                             <i class="material-icons">thumb_up</i>
                         </button>
                     </form>
-                    <form action="/downvote" method="post">
+                    <form action="/downvote{{ query() }}" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <button class="btn{% if joke.downvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
                             <i class="material-icons">thumb_down</i>
                         </button>
                     </form>
                     {% else %}
-                    <form action="/undelete" method="post">
+                    <form action="/undelete{{ query() }}" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <button class="btn-flat" type="submit" style="width: 100%;">
                             <i class="material-icons">delete undo</i>
@@ -118,7 +120,7 @@
                 </div>
                 <div class="joke flow-text col s8 m10{% if joke.deleted %} grey-text{% endif %}" style="line-height: 1.5">
                     {% if joke.mine %}
-                    <form action="/edit" method="post">
+                    <form action="/edit{{ query() }}" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <button type="button" class="btn-floating right blue noteditor" onclick="openEditor(this)"><i class="material-icons">edit</i></button>
                         <div class="input-field hide editor">
@@ -132,7 +134,7 @@
                         {{ joke.html|safe }}
                     </div>
                     {% if joke.mine and not joke.deleted %}
-                    <form action="/delete" method="post">
+                    <form action="/delete{{ query() }}" method="post">
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <button class="btn-floating right red noteditor" type="submit"><i class="material-icons">delete</i></button>
                     </form>
@@ -141,14 +143,19 @@
             </li>
             {% endfor %}
         </ul>
+        {% else %}
+        <div class="section">
+            <p>Nichts gefunden.</p>
+        </div>
+        {% endif %}
         {% if jokes|length > perpage %}
         <div class="section center">
             <ul class="pagination">
-                <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}{% if query %}?{{ query }}{% endif %}"><i class="material-icons">chevron_left</i></a></li>
+                <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}{{ query() }}"><i class="material-icons">chevron_left</i></a></li>
                 {% for page in range((jokes|length/perpage)|round(0, 'ceil')|int) %}
-                <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}{% if query %}?{{ query }}{% endif %}">{{ loop.index }}</a></li>
+                <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}{{ query() }}">{{ loop.index }}</a></li>
                 {% endfor %}
-                <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}{% if query %}?{{ query }}{% endif %}"><i class="material-icons">chevron_right</i></a></li>
+                <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}{{ query() }}"><i class="material-icons">chevron_right</i></a></li>
             </ul>
         </div>
         {% endif %}
@@ -157,7 +164,7 @@
                 <i class="material-icons">add</i>
             </a>
         </div>
-        <form id="modal-submit" class="modal bottom-sheet" action="/submit" method="post">
+        <form id="modal-submit" class="modal bottom-sheet" action="/submit{{ query() }}" method="post">
             <div class="modal-content">
                 <h4>Spruch hinzufügen</h4>
                 <p>Du kannst <em>/kursiv/</em>, <b>*fett*</b> schreiben, und <a>#Tags</a> verwenden.</p>

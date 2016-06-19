@@ -537,18 +537,18 @@ def page(num):
         user['loggedin'] = True
         user['name'] = session['userlogin']
     resp = make_response(
-        # TODO clean this up
         render_template(
             'index.html',
             currentpage=num,
-            query=str(request.query_string, 'utf-8'),
             selected_sort=sortmethod,
             tags=search,
             perpage=perpage,
             jokes=jokes,
             abusemail=config['abusemail'],
             user=user))
-    resp.headers.set('X-SmoothState-Location', request.path)
+    resp.headers.set('X-SmoothState-Location',
+                     request.path + "?" +
+                     str(request.query_string, "utf-8"))
     return resp
 
 
