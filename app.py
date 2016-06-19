@@ -537,6 +537,7 @@ def page(num):
         user['loggedin'] = True
         user['name'] = session['userlogin']
     resp = make_response(
+        # TODO clean this up
         render_template(
             'index.html',
             currentpage=num,
@@ -545,6 +546,7 @@ def page(num):
             tags=search,
             perpage=perpage,
             jokes=jokes,
+            abusemail=config['abusemail'],
             user=user))
     resp.headers.set('X-SmoothState-Location', request.path)
     return resp
