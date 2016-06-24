@@ -291,7 +291,8 @@ class DBProxy(object):
 
     def score(self, jokeid):
         users = self.c.execute("SELECT id FROM " + self.prefix +
-                               "_users WHERE role='user'").fetchall()
+                               "_users WHERE role='user' " +
+                               "OR role='super'").fetchall()
         users = [u['id'] for u in users]
         votewhere = "SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE "
         # TODO optimize queries
