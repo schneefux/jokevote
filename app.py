@@ -26,8 +26,8 @@ class Markup(object):
 
     def prettify_text(self, text):
         html = re.sub('<[^<]+?>', '', text)
-        html = re.sub(r"/(\w+)/", '<em>\\1</em>', html)
-        html = re.sub(r"\*(\w+)\*", '<strong>\\1</strong>', html)
+        html = re.sub(r"/([\w ]+)/", '<em>\\1</em>', html)
+        html = re.sub(r"\*([\w ]+)\*", '<strong>\\1</strong>', html)
         html = re.sub(r"#(\w+)", '<a href="/?filter=' +
                       self.tagmark + '\\1">#\\1</a>', html)
         html = html.replace("\n", "<br />")
