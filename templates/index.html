@@ -36,18 +36,17 @@
                     </li>
                 </ul>
                 <style type="text/css">
-                    @media screen and (min-width: 600px) { /* "m" or "l" */
-                        #searchform {
-                            margin-left: 17em;
-                            margin-right: 24em;
-                        }
+                    nav .brand-logo {
+                        position: relative !important;
                     }
-                    @media screen and (max-width: 600px) { /* "s" */
-                        #searchform {
-                            width: 30%;
-                        }
+                    #searchform {
+                        overflow: hidden;
+                        padding-left: 1rem;
                     }
-                </style> <!-- TODO get rid of these magic margins -->
+                    #searchform .input-field label {
+                        pointer-events: none;
+                    }
+                </style>
                 <form id="searchform" >
                     <div class="input-field">
                         <label for="filter"><i class="material-icons">search</i></label>
