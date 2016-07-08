@@ -2,7 +2,7 @@
 <!doctype html>
 <html lang="de">
 <head>
-    <title>Lehrerspruch-Wahlplattform</title>
+    <title>{{ title }}</title>
     <link rel="stylesheet" type="text/css" href="/static/materialize.min.css">
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <meta charset="utf-8">
@@ -15,7 +15,7 @@
     <header>
         <div class="navbar-fixed">
             <nav class="nav-wrapper">
-                <a href="#" class="hide-on-small-only left brand-logo">Lehrersprüche</a>
+                <a href="#" class="hide-on-small-only left brand-logo">{{ title }}</a>
                 <ul class="right">
                     <li>
                         {% if user.loggedin %}
@@ -137,7 +137,7 @@
                         <input type="hidden" name="id" value="{{ joke.id }}">
                         <button type="button" class="btn-floating right blue noteditor" onclick="openEditor(this)"><i class="material-icons">edit</i></button>
                         <div class="input-field hide editor">
-                            <label for="text">Spruch bearbeiten</label>
+                            <label for="text">Inhalt bearbeiten</label>
                             <textarea class="materialize-textarea" name="text">{{ joke.text }}</textarea>
                             <button type="submit" class="btn-floating right blue"><i class="material-icons">done</i></button>
                         </div>
@@ -179,7 +179,7 @@
         </div>
         <form id="modal-submit" class="modal bottom-sheet" action="/submit{{ query() }}" method="post">
             <div class="modal-content">
-                <h4>Spruch hinzufügen</h4>
+                <h4>Inhalt hinzufügen</h4>
                 <p>Du kannst <em>/kursiv/</em>, <b>*fett*</b> schreiben, und <a>#Tags</a> verwenden.</p>
                 <div class="input-field">
                     <textarea class="materialize-textarea" name="text"></textarea>

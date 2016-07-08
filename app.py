@@ -546,6 +546,7 @@ def page(num):
             perpage=perpage,
             jokes=jokes,
             abusemail=config['abusemail'],
+            title=config['title'],
             user=user))
     resp.headers.set('X-SmoothState-Location',
                      request.path + "?" +
