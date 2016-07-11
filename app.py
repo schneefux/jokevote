@@ -541,7 +541,6 @@ def page(num):
         render_template(
             'index.html',
             currentpage=num,
-            selected_sort=sortmethod,
             tags=search,
             perpage=perpage,
             jokes=jokes,
