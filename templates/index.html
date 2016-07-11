@@ -12,183 +12,174 @@
     <script type="text/javascript" src="/static/jquery.min.js"></script>
     <script type="text/javascript" src="/static/smoothstate.min.js"></script>
     <script type="text/javascript" src="/static/materialize.min.js"></script>
-    <header>
-        <div class="navbar-fixed">
-            <nav class="nav-wrapper">
-                <a href="#" class="hide-on-small-only left brand-logo">{{ title }}</a>
-                <ul class="right">
-                    <li>
-                        {% if user.loggedin %}
-                        <a href="/logout">Logout ({{ user.name }})</a>
-                        {% else %}
-                        <a data-target="modal-login" class="modal-trigger" href="#modal-login">Login</a>
-                        {% endif %}
-                    </li>
-                    <li>
-                        <a class="dropdown-button" href="#!" data-activates="sort-dropdown">
-                            Sortierung<i class="material-icons right">arrow_drop_down</i>
-                        </a>
-                    </li>
-                    <li class="hide-on-small-only">
-                        <a id="export" target="_blank" href="/export{{ query() }}">
-                            <i class="material-icons">file_download</i>
-                        </a>
-                    </li>
-                </ul>
-                <style type="text/css">
-                    nav .brand-logo {
-                        position: relative !important;
-                    }
-                    #searchform {
-                        overflow: hidden;
-                        padding-left: 1rem;
-                    }
-                    #searchform .input-field label {
-                        pointer-events: none;
-                    }
-                </style>
-                <form id="searchform" >
-                    <div class="input-field">
-                        <label for="filter"><i class="material-icons">search</i></label>
-                        <input type="search" name="filter" required>
-                        <i class="material-icons">close</i>
-                    </div>
-                </form>
-            </nav>
-        </div>
-        <ul id="sort-dropdown" class="dropdown-content">
-            {% for meth in [["rank", "Angesagt"], ["score", "Punkte"], ["age", "Alter"], ["unread", "Ungelesen"]] %}
-            <li><a href="/{{ query(sort=meth[0]) }}">{{ meth[1] }}</a></li>
-            {% endfor %}
-        </ul>
-        <form id="modal-login" class="modal row" action="/login" method="post">
-            <div class="modal-content">
-                <h4>Anmelden</h4>
-                <p>Als angemeldeter Benutzer werden deine Stimmen höher gewichtet. Veröffentlichte Sprüche kannst du später bearbeiten und löschen.</p>
-                <div class="col s6 input-field">
-                    <label for="user">Benutzer</label>
-                    <input type="text" name="user">
-                </div>
-                <div class="col s6 input-field">
-                    <label for="user">Passwort</label>
-                    <input type="password" name="password">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-action modal-close btn-flat" type="submit">Anmelden</button>
-            </div>
-        </form>
-    </header>
-    <main class="section container" id="main">
-        <noscript><p class="center section">Bitte aktiviere JavaScript, um alle Funktionen der Seite nutzen zu können.</p></noscript>
-        {% with msgs = get_flashed_messages() %}
-            {% if msgs %}
-            <div class="section">
-            {% for msg in msgs %}
-                <p>{{ msg }}</p>
-            {% endfor %}
-            </div>
-            {% endif %}
-        {% endwith %}
-        {% if tags %}
-        <div class="section">
-            {% for tag in tags %}
-            <div class="chip">
-                {{ tag }}
-                <a href="/{{ query(search=tags|reject('sameas', tag)|join('+')) }}"><i class="material-icons">close</i></a>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% if jokes|length > 0 %}
-        <ul class="collection">
-            {% for joke in jokes[currentpage*perpage:(currentpage+1)*perpage] %}
-            <li class="collection-item row valign-wrapper">
-                <div class="col s4 m2 valign">
-                    {% if not joke.deleted %}
-                    <div>
-                        <i class="material-icons">whatshot</i> <span class="right">{{ joke.score }} Punkte</span>
-                    </div>
-                    <form action="/upvote{{ query() }}" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <button class="btn{% if joke.upvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
-                            <i class="material-icons">thumb_up</i>
-                        </button>
-                    </form>
-                    <form action="/downvote{{ query() }}" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <button class="btn{% if joke.downvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
-                            <i class="material-icons">thumb_down</i>
-                        </button>
-                    </form>
-                    {% else %}
-                    <form action="/undelete{{ query() }}" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <button class="btn-flat" type="submit" style="width: 100%;">
-                            <i class="material-icons">delete undo</i>
-                        </button>
-                    </form>
-                    {% endif %}
-                </div>
-                <div class="joke flow-text col s8 m10{% if joke.deleted %} grey-text{% endif %}" style="line-height: 1.5">
-                    {% if joke.mine %}
-                    <form action="/edit{{ query() }}" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <button type="button" class="btn-floating right blue noteditor" onclick="openEditor(this)"><i class="material-icons">edit</i></button>
-                        <div class="input-field hide editor">
-                            <label for="text">Inhalt bearbeiten</label>
-                            <textarea class="materialize-textarea" name="text">{{ joke.text }}</textarea>
-                            <button type="submit" class="btn-floating right blue"><i class="material-icons">done</i></button>
+    <div id="smoothed">
+        <header>
+            <div class="navbar-fixed">
+                <nav class="nav-wrapper">
+                    <a href="#" class="hide-on-small-only left brand-logo">{{ title }}</a>
+                    <ul class="right">
+                        <li>
+                            {% if user.loggedin %}
+                            <a href="/logout">Logout ({{ user.name }})</a>
+                            {% else %}
+                            <a data-target="modal-login" class="modal-trigger" href="#modal-login">Login</a>
+                            {% endif %}
+                        </li>
+                        <li>
+                            <a class="dropdown-button" href="#!" data-activates="sort-dropdown">
+                                Sortierung<i class="material-icons right">arrow_drop_down</i>
+                            </a>
+                        </li>
+                        <li class="hide-on-small-only">
+                            <a id="export" target="_blank" href="/export{{ query() }}">
+                                <i class="material-icons">file_download</i>
+                            </a>
+                        </li>
+                    </ul>
+                    <form id="searchform" >
+                        <div class="input-field">
+                            <label for="filter"><i class="material-icons">search</i></label>
+                            <input type="search" name="filter" required>
+                            <i class="material-icons">close</i>
                         </div>
                     </form>
-                    {% endif %}
-                    <div class="textfield noteditor">
-                        {{ joke.html|safe }}
-                    </div>
-                    {% if joke.mine and not joke.deleted %}
-                    <form action="/delete{{ query() }}" method="post">
-                        <input type="hidden" name="id" value="{{ joke.id }}">
-                        <button class="btn-floating right red noteditor" type="submit"><i class="material-icons">delete</i></button>
-                    </form>
-                    {% endif %}
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <div class="section">
-            <p>Nichts gefunden.</p>
-        </div>
-        {% endif %}
-        {% if jokes|length > perpage %}
-        <div class="section center">
-            <ul class="pagination">
-                <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}{{ query() }}"><i class="material-icons">chevron_left</i></a></li>
-                {% for page in range((jokes|length/perpage)|round(0, 'ceil')|int) %}
-                <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}{{ query() }}">{{ loop.index }}</a></li>
+                </nav>
+            </div>
+            <ul id="sort-dropdown" class="dropdown-content">
+                {% for meth in [["rank", "Angesagt"], ["score", "Punkte"], ["age", "Alter"], ["unread", "Ungelesen"]] %}
+                <li><a href="/{{ query(sort=meth[0]) }}">{{ meth[1] }}</a></li>
                 {% endfor %}
-                <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}{{ query() }}"><i class="material-icons">chevron_right</i></a></li>
             </ul>
-        </div>
-        {% endif %}
-        <div class="fixed-action-btn" style="bottom: 45px; right: 24px;">
-            <a data-target="modal-submit" class="modal-trigger btn-floating btn-large red" href="#modal-submit">
-                <i class="material-icons">add</i>
-            </a>
-        </div>
-        <form id="modal-submit" class="modal bottom-sheet" action="/submit{{ query() }}" method="post">
-            <div class="modal-content">
-                <h4>Inhalt hinzufügen</h4>
-                <p>Du kannst <em>/kursiv/</em>, <b>*fett*</b> schreiben, und <a>#Tags</a> verwenden.</p>
-                <div class="input-field">
-                    <textarea class="materialize-textarea" name="text"></textarea>
+            <form id="modal-login" class="modal row" action="/login" method="post">
+                <div class="modal-content">
+                    <h4>Anmelden</h4>
+                    <p>Als angemeldeter Benutzer werden deine Stimmen höher gewichtet. Veröffentlichte Sprüche kannst du später bearbeiten und löschen.</p>
+                    <div class="col s6 input-field">
+                        <label for="user">Benutzer</label>
+                        <input type="text" name="user">
+                    </div>
+                    <div class="col s6 input-field">
+                        <label for="user">Passwort</label>
+                        <input type="password" name="password">
+                    </div>
                 </div>
+                <div class="modal-footer">
+                    <button class="modal-action modal-close btn-flat" type="submit">Anmelden</button>
+                </div>
+            </form>
+        </header>
+        <main class="section container">
+            <noscript><p class="center section">Bitte aktiviere JavaScript, um alle Funktionen der Seite nutzen zu können.</p></noscript>
+            {% with msgs = get_flashed_messages() %}
+                {% if msgs %}
+                <div class="section">
+                {% for msg in msgs %}
+                    <p>{{ msg }}</p>
+                {% endfor %}
+                </div>
+                {% endif %}
+            {% endwith %}
+            {% if tags %}
+            <div class="section">
+                {% for tag in tags %}
+                <div class="chip">
+                    {{ tag }}
+                    <a href="/{{ query(search=tags|reject('sameas', tag)|join('+')) }}"><i class="material-icons">close</i></a>
+                </div>
+                {% endfor %}
             </div>
-            <div class="modal-footer">
-                <input type="submit" class="modal-action modal-close btn-flat" value="Abschicken">
+            {% endif %}
+            {% if jokes|length > 0 %}
+            <ul class="collection">
+                {% for joke in jokes[currentpage*perpage:(currentpage+1)*perpage] %}
+                <li class="collection-item row valign-wrapper">
+                    <div class="col s4 m2 valign">
+                        {% if not joke.deleted %}
+                        <div>
+                            <i class="material-icons">whatshot</i> <span class="right">{{ joke.score }} Punkte</span>
+                        </div>
+                        <form action="/upvote{{ query() }}" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <button class="btn{% if joke.upvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
+                                <i class="material-icons">thumb_up</i>
+                            </button>
+                        </form>
+                        <form action="/downvote{{ query() }}" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <button class="btn{% if joke.downvoted %} disabled{% endif %}" type="submit" style="width: 100%;">
+                                <i class="material-icons">thumb_down</i>
+                            </button>
+                        </form>
+                        {% else %}
+                        <form action="/undelete{{ query() }}" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <button class="btn-flat" type="submit" style="width: 100%;">
+                                <i class="material-icons">delete undo</i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    <div class="joke flow-text col s8 m10{% if joke.deleted %} grey-text{% endif %}" style="line-height: 1.5">
+                        {% if joke.mine %}
+                        <form action="/edit{{ query() }}" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <button type="button" class="btn-floating right blue noteditor" onclick="openEditor(this)"><i class="material-icons">edit</i></button>
+                            <div class="input-field hide editor">
+                                <label for="text">Inhalt bearbeiten</label>
+                                <textarea class="materialize-textarea" name="text">{{ joke.text }}</textarea>
+                                <button type="submit" class="btn-floating right blue"><i class="material-icons">done</i></button>
+                            </div>
+                        </form>
+                        {% endif %}
+                        <div class="textfield noteditor">
+                            {{ joke.html|safe }}
+                        </div>
+                        {% if joke.mine and not joke.deleted %}
+                        <form action="/delete{{ query() }}" method="post">
+                            <input type="hidden" name="id" value="{{ joke.id }}">
+                            <button class="btn-floating right red noteditor" type="submit"><i class="material-icons">delete</i></button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="section">
+                <p>Nichts gefunden.</p>
             </div>
-        </form>
-    </main>
+            {% endif %}
+            {% if jokes|length > perpage %}
+            <div class="section center">
+                <ul class="pagination">
+                    <li{% if currentpage==0 %} class="disabled"{% endif %}><a href="/page/{{ currentpage-1 }}{{ query() }}"><i class="material-icons">chevron_left</i></a></li>
+                    {% for page in range((jokes|length/perpage)|round(0, 'ceil')|int) %}
+                    <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}{{ query() }}">{{ loop.index }}</a></li>
+                    {% endfor %}
+                    <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}{{ query() }}"><i class="material-icons">chevron_right</i></a></li>
+                </ul>
+            </div>
+            {% endif %}
+            <div class="fixed-action-btn" style="bottom: 45px; right: 24px;">
+                <a data-target="modal-submit" class="modal-trigger btn-floating btn-large red" href="#modal-submit">
+                    <i class="material-icons">add</i>
+                </a>
+            </div>
+            <form id="modal-submit" class="modal bottom-sheet" action="/submit{{ query() }}" method="post">
+                <div class="modal-content">
+                    <h4>Inhalt hinzufügen</h4>
+                    <p>Du kannst <em>/kursiv/</em>, <b>*fett*</b> schreiben, und <a>#Tags</a> verwenden.</p>
+                    <div class="input-field">
+                        <textarea class="materialize-textarea" name="text"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="submit" class="modal-action modal-close btn-flat" value="Abschicken">
+                </div>
+            </form>
+        </main>
+    </div>
+
     <footer class="page-footer">
         <div class="footer-copyright">
             <div class="container">
@@ -204,6 +195,7 @@
             </div>
         </div>
     </footer>
+
     <script type="text/javascript">
         function materialjs() {
             $('.dropdown-button').dropdown();
@@ -212,7 +204,7 @@
 
         $(document).ready(function() {
             materialjs();
-            $('#main').smoothState({
+            $('#smoothed').smoothState({
                 prefetch: true,
                 locationHeader: 'X-SmoothState-Location',
                 blacklist: '#export',
@@ -225,5 +217,17 @@
             $('.noteditor', joke).addClass('hide');
         }
     </script>
+    <style type="text/css">
+        nav .brand-logo {
+            position: relative !important;
+        }
+        #searchform {
+            overflow: hidden;
+            padding-left: 1rem;
+        }
+        #searchform .input-field label {
+            pointer-events: none;
+        }
+    </style>
 </body>
 </html>
