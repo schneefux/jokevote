@@ -369,7 +369,7 @@ class DBProxy(object):
                 # deleted
                 if ret_joke['mine']:
                     ret_joke['deleted'] = True
-                    ret_joke['score'] = ret_joke['freshness'] = -1000
+                    ret_joke['score'] = -100
                 else:
                     continue
 
@@ -384,7 +384,7 @@ class DBProxy(object):
                 return 1-j['freshness']
             if sortby == 'score':
                 return j['score']
-            return (j['score']+1)/pow(j['freshness']+1, 2)  # 'rank' or invalid
+            return (j['score']+1)/pow(j['freshness']+1, 1.8)  # 'rank' or invalid
 
         ret_jokes = sorted(ret_jokes, key=sorter, reverse=True)
         return ret_jokes
