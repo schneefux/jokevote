@@ -529,6 +529,7 @@ def page(num):
     sortmethod = str(request.args.get('sort')) or 'rank'
     if search:
         # TODO find a cleaner way
+        # visual: #, actual: _
         search = re.sub(r"^" + Markup.tagmark, "#", search)
         search = search.split(Markup.spacemark)
     perpage = abs(int(request.args.get('perpage') or 10))
@@ -546,6 +547,7 @@ def page(num):
             jokes=jokes,
             abusemail=config['abusemail'],
             title=config['title'],
+            featured=config['featured'],
             user=user))
     resp.headers.set('X-SmoothState-Location',
                      request.path + "?" +

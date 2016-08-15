@@ -79,14 +79,24 @@
                 </div>
                 {% endif %}
             {% endwith %}
-            {% if tags %}
+            {% if tags or featured %}
             <div class="section">
+                {% if tags %}
                 {% for tag in tags %}
                 <div class="chip">
                     {{ tag }}
                     <a href="/{{ query(search=tags|reject('sameas', tag)|join('+')) }}"><i class="material-icons">close</i></a>
                 </div>
                 {% endfor %}
+                {% endif %}
+
+                {% if featured %}
+                <p>Empfohlen:
+                    {% for tag in featured %}
+                    <a href="/{{ query(search='_'+tag) }}">#{{ tag }}</a>
+                    {% endfor %}
+                </p>
+                {% endif %}
             </div>
             {% endif %}
             {% if jokes|length > 0 %}
