@@ -1,3 +1,4 @@
+{# re-build current search query and override given options #}
 {% macro query(search, sort) %}?filter={{ search if search is defined else request.args.get("filter") or "" }}&sort={{ sort if sort is defined else request.args.get("sort") or "" }}{% endmacro %}
 <!doctype html>
 <html lang="de">
@@ -44,9 +45,9 @@
                         </div>
                     </form>
                 </nav>
-            </div>
+            </div> <!-- /navbar -->
             <ul id="sort-dropdown" class="dropdown-content">
-                {% for meth in [["rank", "Angesagt"], ["score", "Punkte"], ["age", "Alter"], ["unread", "Ungelesen"]] %}
+                {% for meth in [["rank", "Angesagt"], ["score", "Punkte"], ["age", "Neu"], ["unread", "Ungelesen"]] %}
                 <li><a href="/{{ query(sort=meth[0]) }}">{{ meth[1] }}</a></li>
                 {% endfor %}
             </ul>
@@ -66,8 +67,8 @@
                 <div class="modal-footer">
                     <button class="modal-action modal-close btn-flat" type="submit">Anmelden</button>
                 </div>
-            </form>
-        </header>
+            </form> <!-- /loginform -->
+        </header> <!-- /header -->
         <main class="section container">
             <noscript><p class="center section">Bitte aktiviere JavaScript, um alle Funktionen der Seite nutzen zu können.</p></noscript>
             {% with msgs = get_flashed_messages() %}
@@ -79,6 +80,8 @@
                 </div>
                 {% endif %}
             {% endwith %}
+            {# /flashes #}
+
             {% if tags or featured %}
             <div class="section">
                 {% if tags %}
@@ -89,6 +92,7 @@
                 </div>
                 {% endfor %}
                 {% endif %}
+                {# /tags #}
 
                 {% if featured %}
                 <p>Empfohlen:
@@ -97,8 +101,11 @@
                     {% endfor %}
                 </p>
                 {% endif %}
+                {# /featured #}
             </div>
             {% endif %}
+            {# /tags-featured #}
+
             {% if jokes|length > 0 %}
             <ul class="collection">
                 {% for joke in jokes[currentpage*perpage:(currentpage+1)*perpage] %}
@@ -127,8 +134,8 @@
                                 <i class="material-icons">delete undo</i>
                             </button>
                         </form>
-                        {% endif %}
-                    </div>
+                        {% endif %} {# /if-deleted #}
+                    </div> <!-- /buttons -->
                     <div class="joke flow-text col s8 m10{% if joke.deleted %} grey-text{% endif %}" style="line-height: 1.5">
                         {% if joke.mine %}
                         <form action="/edit{{ query() }}" method="post">
@@ -140,7 +147,7 @@
                                 <button type="submit" class="btn-floating right blue"><i class="material-icons">done</i></button>
                             </div>
                         </form>
-                        {% endif %}
+                        {% endif %} {# /if-mine #}
                         <div class="textfield noteditor">
                             {{ joke.html|safe }}
                         </div>
@@ -150,15 +157,17 @@
                             <button class="btn-floating right red noteditor" type="submit"><i class="material-icons">delete</i></button>
                         </form>
                         {% endif %}
-                    </div>
-                </li>
+                    </div> <!-- /text -->
+                </li> <!-- /joke -->
                 {% endfor %}
-            </ul>
+                {# /jokes #}
+            </ul> <!-- /jokes -->
             {% else %}
             <div class="section">
                 <p>Nichts gefunden.</p>
             </div>
             {% endif %}
+
             {% if jokes|length > perpage %}
             <div class="section center">
                 <ul class="pagination">
@@ -168,13 +177,14 @@
                     {% endfor %}
                     <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}{{ query() }}"><i class="material-icons">chevron_right</i></a></li>
                 </ul>
-            </div>
+            </div> <!-- /pagination -->
             {% endif %}
+
             <div class="fixed-action-btn" style="bottom: 45px; right: 24px;">
                 <a data-target="modal-submit" class="modal-trigger btn-floating btn-large red" href="#modal-submit">
                     <i class="material-icons">add</i>
                 </a>
-            </div>
+            </div> <!-- /button-submit -->
             <form id="modal-submit" class="modal bottom-sheet" action="/submit{{ query() }}" method="post">
                 <div class="modal-content">
                     <h4>Inhalt hinzufügen</h4>
@@ -186,9 +196,9 @@
                 <div class="modal-footer">
                     <input type="submit" class="modal-action modal-close btn-flat" value="Abschicken">
                 </div>
-            </form>
-        </main>
-    </div>
+            </form> <!-- /form-submit -->
+        </main> <!-- /main -->
+    </div> <!-- /smoothed -->
 
     <footer class="page-footer">
         <div class="footer-copyright">
