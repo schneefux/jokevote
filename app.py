@@ -384,12 +384,16 @@ class DBProxy(object):
                 return 1-j['freshness']
             if sortby == 'score':
                 return j['score']
-            return (j['score']+1)/pow(j['freshness']+1, 1.8)  # 'rank' or invalid
+            # 'rank' or invalid
+            return (j['score']+1)/pow(j['freshness']+1, 1.8)
 
         ret_jokes = sorted(ret_jokes, key=sorter, reverse=True)
         return ret_jokes
 
     def add_user(self, name, password):
+        # allow words combined by '.', '-', ' '
+        if re.match(r"^\w+(([. -])?\w+)*$", name) is None or len(name) < 3:
+            return -3  # invalid username
         if self.get_user(name=name) != -2:
             return -1  # already registered
         password = password.encode('utf-8')
@@ -419,6 +423,10 @@ class DBProxy(object):
                 uid = self.c.lastrowid
         else:
             if name is not None:
+                # validate username, see add_user
+                if re.match(r"^\w+(([. -])?\w+)*$", name) is None or len(name) < 3:
+                    return -3  # invalid username
+
                 user = self.c.execute("SELECT id FROM " + self.prefix +
                                       "_users WHERE identifier=?",
                                       (name,)).fetchone()
@@ -618,6 +626,8 @@ def login():
         flash('Erfolgreich registriert.')
 
     res = db().get_user(name=name, password=passw)
+    if res == -3:
+        flash('Benutzername ungültig.')
     if res == -2:
         flash('Benutzer existiert nicht.')
     if res == -1:
