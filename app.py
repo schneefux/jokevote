@@ -289,28 +289,39 @@ class DBProxy(object):
     def close(self):
         self.conn.close()
 
-    def score(self, jokeid):
+    def score(self, jokeid, exclude_voter=None):
+        # exclude_voter (optional): do not count a user's votes
+        if exclude_voter is None:
+            exclude_voter = ""
+
         users = self.c.execute("SELECT id FROM " + self.prefix +
                                "_users WHERE role='user' " +
                                "OR role='super'").fetchall()
         users = [u['id'] for u in users]
+
         votewhere = "SELECT COUNT(*) FROM " + self.prefix + "_votes WHERE "
+
         # TODO optimize queries
+        # count guest votes
         score = 0
         score += self.c.execute(
-            votewhere + "joke=? AND type='up'",
-            (jokeid,)).fetchone()['COUNT(*)']
+            votewhere + "joke=? AND NOT user=? AND type='up'",
+            (jokeid, exclude_voter)).fetchone()['COUNT(*)']
         score -= self.c.execute(
-            votewhere + "joke=? AND type='down'",
-            (jokeid,)).fetchone()['COUNT(*)']
+            votewhere + "joke=? AND NOT user=? AND type='down'",
+            (jokeid, exclude_voter)).fetchone()['COUNT(*)']
+
         for user in users:
             # user's scores count 10 times more
+            if user == exclude_voter:
+                continue
             score += self.c.execute(
                 votewhere + "joke=? AND type='up' AND user=?",
                 (jokeid, user)).fetchone()['COUNT(*)'] * 9
             score -= self.c.execute(
                 votewhere + "joke=? AND type='down' AND user=?",
                 (jokeid, user)).fetchone()['COUNT(*)'] * 9
+
         return score
 
     def get_jokes(self, user=None, search=None, sortby='rank'):
@@ -359,7 +370,7 @@ class DBProxy(object):
                 if not match:
                     continue
 
-            ret_joke['score'] = self.score(joke['id'])
+            ret_joke['score'] = self.score(joke['id'], user)
             ret_joke['freshness'] = (now - joke['created']).days
 
             # skip other's jokes marked as deleted

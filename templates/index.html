@@ -112,8 +112,19 @@
                 <li class="collection-item row valign-wrapper">
                     <div class="col s4 m2 valign">
                         {% if not joke.deleted %}
-                        <div>
-                            <i class="material-icons">whatshot</i> <span class="right">{{ joke.score }} Punkte</span>
+                        <div class="center">
+                            <i class="material-icons">whatshot</i>
+                            <span>{{ joke.score }}</span>
+                            {% if joke.downvoted %}
+                                <small class="red-text">
+                                    {% if user.loggedin %}-10{% else %}-1{% endif %}
+                                </small>
+                            {% endif %}
+                            {% if joke.upvoted %}
+                                <small class="green-text">
+                                    {% if user.loggedin %}+10{% else %}+1{% endif %}
+                                </small>
+                            {% endif %}
                         </div>
                         <form action="/upvote{{ query() }}" method="post">
                             <input type="hidden" name="id" value="{{ joke.id }}">
