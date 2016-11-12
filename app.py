@@ -4,6 +4,7 @@ import sqlite3
 import hashlib
 import os
 import re
+import json
 import datetime
 from flask import (
     Flask,
@@ -17,7 +18,6 @@ from flask import (
     session,
     flash
 )
-from config import config
 
 
 class Markup(object):
@@ -513,7 +513,7 @@ class DBProxy(object):
 def db():
     database = getattr(g, "_database", None)
     if database is None:
-        database = g._database = DBProxy("votes.db",
+        database = g._database = DBProxy(config['database'],
                                          config['superuser'].lower())
     return database
 
@@ -676,6 +676,14 @@ def get_static(path):
 @app.route('/robots.txt')
 def robotstxt():
     return send_from_directory('static', 'robots.txt')
+
+if 'VOTE_CONFIG' in os.environ:
+    configf = open(os.environ['VOTE_CONFIG'])
+else:
+    configf = open('config.json')
+
+config = json.load(configf)
+configf.close()
 
 app.debug = config['debug']
 app.secret_key = config['secret_key']
