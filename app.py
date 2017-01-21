@@ -312,15 +312,15 @@ class DBProxy(object):
             (jokeid, exclude_voter)).fetchone()['COUNT(*)']
 
         for user in users:
-            # user's scores count 10 times more
+            # user's scores count 3 times more
             if user == exclude_voter:
                 continue
             score += self.c.execute(
                 votewhere + "joke=? AND type='up' AND user=?",
-                (jokeid, user)).fetchone()['COUNT(*)'] * 9
+                (jokeid, user)).fetchone()['COUNT(*)'] * 2
             score -= self.c.execute(
                 votewhere + "joke=? AND type='down' AND user=?",
-                (jokeid, user)).fetchone()['COUNT(*)'] * 9
+                (jokeid, user)).fetchone()['COUNT(*)'] * 2
 
         return score
 
