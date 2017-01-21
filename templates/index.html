@@ -117,12 +117,12 @@
                             <span>{{ joke.score }}</span>
                             {% if joke.downvoted %}
                                 <small class="red-text">
-                                    {% if user.loggedin %}-10{% else %}-1{% endif %}
+                                    {% if user.loggedin %}-3{% else %}-1{% endif %}
                                 </small>
                             {% endif %}
                             {% if joke.upvoted %}
                                 <small class="green-text">
-                                    {% if user.loggedin %}+10{% else %}+1{% endif %}
+                                    {% if user.loggedin %}+3{% else %}+1{% endif %}
                                 </small>
                             {% endif %}
                         </div>
