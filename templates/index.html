@@ -186,7 +186,7 @@
                     {% for page in range((jokes|length/perpage)|round(0, 'ceil')|int) %}
                     <li{% if currentpage==loop.index0 %} class="active"{% endif %}><a href="/page/{{ loop.index0 }}{{ query() }}">{{ loop.index }}</a></li>
                     {% endfor %}
-                    <li{% if currentpage==loop.length-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}{{ query() }}"><i class="material-icons">chevron_right</i></a></li>
+                    <li{% if currentpage==((jokes|length/perpage)|round(0, 'ceil')|int)-1 %} class="disabled"{% endif %}><a href="/page/{{ currentpage+1 }}{{ query() }}"><i class="material-icons">chevron_right</i></a></li>
                 </ul>
             </div> <!-- /pagination -->
             {% endif %}
